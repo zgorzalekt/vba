@@ -1,0 +1,994 @@
+
+'================================INTRASTAT GENERATOR===================================================
+'========================Tomasz Zgorzałek=======================================
+Public monthno As Integer
+Public filepath As String
+Function monthshort(monthno As Integer)
+monthshort = Choose(monthno, "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec")
+End Function
+Function killfile(fileno As Integer)
+killfile = Choose(fileno, "SP_17920.xlsx", "SP_18000.xlsx", "NL_17920.xlsx", _
+"NL_18000.xlsx", "PL_17920.xlsx", "PL_18000.xlsx", "SP_17920.xlsx", "PL_17910.xlsx", _
+"PL_17990.xlsx", "RAW DATA QUERY.xlsx")
+End Function
+
+Sub Polecenie0_Click()
+'for z = 1
+Dim sqlsting As String
+Dim prevmonthno As Integer
+
+monthno = InputBox("Enter number of month You interested in (from 1 to 12)", "Month")
+'exchange = InputBox("Enter exchange rate EUR to PLN (for last day of  month You interested in, in 0.0000 format)", "Currency")
+If monthno = 1 Then prevmonthno = 12 Else prevmonthno = monthno - 1
+
+'###DELETE EXISTING TABLES##################################################################################
+Call delete_tables
+    
+'###FILES PREPARATION#######################################################################################
+Call files_preparation
+
+'###IMPORTS#################################################################################################
+Call imports
+'FOR Z =1
+'###rawdata master file###HEART AND SOUL####################################################################
+'SHIP IN MONTH AND MONTH-1 AND RECEVIE IN MONTH hs code2 + hs code join left
+DoCmd.RunSQL "SELECT [RAW DATA QUERY].Category, [RAW DATA QUERY].[Org Code], [RAW DATA QUERY].Type, " _
+& "[RAW DATA QUERY].[Supplier], [RAW DATA QUERY].[Supplier Name], [RAW DATA QUERY].[Purchase No], " _
+& "[RAW DATA QUERY].[Purchase Seq], [RAW DATA QUERY].[Part No], [RAW DATA QUERY].[Part Description], " _
+& "[RAW DATA QUERY].[PO/IR Save Date]," _
+& "[RAW DATA QUERY].[PO/IR Confirm Date], [RAW DATA QUERY].[Currency], [RAW DATA QUERY].[Unit Price], " _
+& "[RAW DATA QUERY].[Purchase Qty], [RAW DATA QUERY].[Transit Qty], [RAW DATA QUERY].[Receive Qty], " _
+& "[RAW DATA QUERY].[Purchase Amt], [RAW DATA QUERY].[Transit Amt], [RAW DATA QUERY].[Receive Amt] AS " _
+& "[Receive Amt PLN], [RAW DATA QUERY].[Receive Amt(EUR)] as [Receive Amt EUR], " _
+& "[RAW DATA QUERY].[Ship Date], [RAW DATA QUERY].[Receive Date(Nota Fiscal Date],[RAW DATA QUERY].[Line Status], " _
+& "[RAW DATA QUERY].[Ship Method], [RAW DATA QUERY].[BL No], [RAW DATA QUERY].[Invoice No], " _
+& "[RAW DATA QUERY].[Shipment No], [RAW DATA QUERY].[Tracking No],[RAW DATA QUERY].Destination, " _
+& "[RAW DATA QUERY].[Tax Amt (LGEIL)], [RAW DATA QUERY].[Product], [RAW DATA QUERY].[Product Model], " _
+& "[RAW DATA QUERY].[LGESP W/H Reciept Date], [RAW DATA QUERY].[LGEIL W/H Reciept Date],[RAW DATA QUERY].Remark, " _
+& "[RAW DATA QUERY].[Pack Qty],[SVC Parts HS codes].[HS] AS [HS code 2]" _
+& "INTO rawdata " _
+& "FROM [RAW DATA QUERY] LEFT JOIN [SVC Parts HS codes] ON [RAW DATA QUERY].Product = [SVC Parts HS codes].CODE " _
+& "WHERE (Month([RAW DATA QUERY].[Ship Date])= " _
+& monthno _
+& " OR Month([RAW DATA QUERY].[Ship Date])=" _
+& prevmonthno _
+& " ) And Month([RAW DATA QUERY].[Receive Date(Nota Fiscal Date])= " _
+& monthno _
+& " AND ([RAW DATA QUERY].[Remark] NOT LIKE 'vir*ir*' OR [RAW DATA QUERY].[Remark] IS NULL);"
+
+
+    DoCmd.OpenQuery "EFA to EFB", acViewNormal, acUpdate
+    DoCmd.OpenQuery "EFA to EFC", acViewNormal, acUpdate
+    DoCmd.OpenQuery "EFA to EEF", acViewNormal, acUpdate
+
+    DoCmd.OpenQuery "EFB to EFA", acViewNormal, acUpdate
+    DoCmd.OpenQuery "EFB to EFC", acViewNormal, acUpdate
+    DoCmd.OpenQuery "EFB to EEF", acViewNormal, acUpdate
+
+    DoCmd.OpenQuery "EFC to EFA", acViewNormal, acUpdate
+    DoCmd.OpenQuery "EFC to EFB", acViewNormal, acUpdate
+    DoCmd.OpenQuery "EFC to EEF", acViewNormal, acUpdate
+
+    DoCmd.OpenQuery "EEF to EFA", acViewNormal, acUpdate
+    DoCmd.OpenQuery "EEF to EFB", acViewNormal, acUpdate
+    DoCmd.OpenQuery "EEF to EFC", acViewNormal, acUpdate
+    
+'###STOCK TRANSFER#########################################################
+filepath = Application.CurrentProject.Path & "\StockTransfer " & monthshort(monthno) & ".xlsx"
+    
+    DoCmd.TransferSpreadsheet acExport, , "rawdata", filepath
+
+    DoCmd.TransferSpreadsheet acExport, , "EFA-EFB", filepath
+    DoCmd.TransferSpreadsheet acExport, , "EFA-EFC", filepath
+    DoCmd.TransferSpreadsheet acExport, , "EFA-EEF", filepath
+
+    DoCmd.TransferSpreadsheet acExport, , "EFB-EFA", filepath
+    DoCmd.TransferSpreadsheet acExport, , "EFB-EFC", filepath
+    DoCmd.TransferSpreadsheet acExport, , "EFB-EEF", filepath
+    
+    DoCmd.TransferSpreadsheet acExport, , "EFC-EFA", filepath
+    DoCmd.TransferSpreadsheet acExport, , "EFC-EFB", filepath
+    DoCmd.TransferSpreadsheet acExport, , "EFC-EEF", filepath
+
+    DoCmd.TransferSpreadsheet acExport, , "EEF-EFA", filepath
+    DoCmd.TransferSpreadsheet acExport, , "EEF-EFB", filepath
+    DoCmd.TransferSpreadsheet acExport, , "EEF-EFC", filepath
+    
+    
+'Intrastat_PL
+    DoCmd.OpenQuery "sales EFB", acViewNormal, acUpdate
+    DoCmd.OpenQuery "purchase EFB", acViewNormal, acUpdate
+'    DoCmd.OpenQuery "sales EEF", acViewNormal, acUpdate
+'    DoCmd.OpenQuery "purchase EEF", acViewNormal, acUpdate
+'
+filepath = Application.CurrentProject.Path & "\Intrastat_PL " & monthshort(monthno) & ".xlsx"
+'    'UNION ALL
+    DoCmd.TransferSpreadsheet acExport, , "EFB sales", filepath
+'    DoCmd.TransferSpreadsheet acExport, , "EEF sales", filepath
+'    'UNION ALL
+    DoCmd.TransferSpreadsheet acExport, , "EFB purchase", filepath
+'    DoCmd.TransferSpreadsheet acExport, , "EEF purchase", filepath
+'
+    DoCmd.TransferSpreadsheet acExport, , "QRY_PL17920", filepath
+''    DoCmd.TransferSpreadsheet acExport, , "QRY_PL17910", filepath
+''    DoCmd.TransferSpreadsheet acExport, , "QRY_PL17990", filepath
+''    DoCmd.TransferSpreadsheet acExport, , "QRY_PL18000", filepath
+'
+''    DoCmd.TransferSpreadsheet acExport, , "PL_17910", filepath
+    DoCmd.TransferSpreadsheet acExport, , "PL_17920", filepath
+''    DoCmd.TransferSpreadsheet acExport, , "PL_17990", filepath
+''    DoCmd.TransferSpreadsheet acExport, , "PL_18000", filepath
+'    DoCmd.TransferSpreadsheet acExport, , "PL_17920", filepath
+    
+'Intrastat_SP
+    DoCmd.OpenQuery "sales EFC", acViewNormal, acUpdate
+    DoCmd.OpenQuery "purchase EFC", acViewNormal, acUpdate
+
+filepath = Application.CurrentProject.Path & "\Intrastat_SP " & monthshort(monthno) & ".xlsx"
+    DoCmd.TransferSpreadsheet acExport, , "EFC sales", filepath
+    DoCmd.TransferSpreadsheet acExport, , "EFC purchase", filepath
+    DoCmd.TransferSpreadsheet acExport, , "QRY_SP17920", filepath
+    DoCmd.TransferSpreadsheet acExport, , "QRY_SP18000", filepath
+    
+    DoCmd.TransferSpreadsheet acExport, , "SP_17920", filepath
+    DoCmd.TransferSpreadsheet acExport, , "SP_18000", filepath
+        
+'Intrastat_NL
+    DoCmd.OpenQuery "sales EFA", acViewNormal, acUpdate
+    DoCmd.OpenQuery "purchase EFA", acViewNormal, acUpdate
+
+filepath = Application.CurrentProject.Path & "\Intrastat_NL " & monthshort(monthno) & ".xlsx"
+    DoCmd.TransferSpreadsheet acExport, , "EFA sales", filepath
+    DoCmd.TransferSpreadsheet acExport, , "EFA purchase", filepath
+    DoCmd.TransferSpreadsheet acExport, , "QRY_NL17920", filepath
+    DoCmd.TransferSpreadsheet acExport, , "QRY_NL18000", filepath
+    
+    DoCmd.TransferSpreadsheet acExport, , "NL_17920", filepath
+    DoCmd.TransferSpreadsheet acExport, , "NL_18000", filepath
+    
+'###STOCK TRANSFER PIVOTS###########################################
+Call StockTransferPivots_Click
+Call ALIGN
+MsgBox ("ALL DONE")
+End Sub
+
+
+Private Sub delete_tables()
+'Delete old tables
+On Error Resume Next
+DoCmd.SetWarnings False
+
+'###DELETE EXISTING TABLES###################################################################################################################################
+
+      DoCmd.DeleteObject acTable, "RAW DATA QUERY"
+      DoCmd.DeleteObject acTable, "CN QTY"
+      DoCmd.DeleteObject acTable, "RAW DATA QUERY$_Importuj błędy"
+      DoCmd.DeleteObject acTable, "Model_No_HS_Code"
+      DoCmd.DeleteObject acTable, "rawdata"
+      DoCmd.DeleteObject acTable, "weight_new"
+      DoCmd.DeleteObject acTable, "1rawdata"
+      DoCmd.DeleteObject acTable, "EFA-EFB"
+      DoCmd.DeleteObject acTable, "EFA-EFC"
+      DoCmd.DeleteObject acTable, "EFA-EEF"
+
+      DoCmd.DeleteObject acTable, "EFB-EFA"
+      DoCmd.DeleteObject acTable, "EFB-EFC"
+      DoCmd.DeleteObject acTable, "EFB-EEF"
+
+      DoCmd.DeleteObject acTable, "EFC-EFA"
+      DoCmd.DeleteObject acTable, "EFC-EFB"
+      DoCmd.DeleteObject acTable, "EFC-EEF"
+
+      DoCmd.DeleteObject acTable, "EEF-EFA"
+      DoCmd.DeleteObject acTable, "EEF-EFB"
+      DoCmd.DeleteObject acTable, "EEF-EFC"
+
+      DoCmd.DeleteObject acTable, "EEF purchase"
+      DoCmd.DeleteObject acTable, "EFA purchase"
+      DoCmd.DeleteObject acTable, "EFB purchase"
+      DoCmd.DeleteObject acTable, "EFC purchase"
+
+      DoCmd.DeleteObject acTable, "EEF sales"
+      DoCmd.DeleteObject acTable, "EFA sales"
+      DoCmd.DeleteObject acTable, "EFB sales"
+      DoCmd.DeleteObject acTable, "EFC sales"
+
+      DoCmd.DeleteObject acTable, "NL_17920"
+      DoCmd.DeleteObject acTable, "NL_18000"
+
+      DoCmd.DeleteObject acTable, "SP_17920"
+      DoCmd.DeleteObject acTable, "SP_18000"
+
+      DoCmd.DeleteObject acTable, "PL_17920"
+      DoCmd.DeleteObject acTable, "PL_18000"
+      DoCmd.DeleteObject acTable, "PL_17910"
+      DoCmd.DeleteObject acTable, "PL_17990"
+      
+End Sub
+
+Private Sub files_preparation()
+
+Dim xlApp As Object
+Set xlApp = CreateObject("Excel.Application")
+Dim xlSht As Object
+Dim I As Integer
+Dim delfile As String
+
+For I = 1 To 10
+    delfile = Application.CurrentProject.Path & "\" & killfile(I)
+        'Check that file exists
+        If Len(Dir$(delfile)) > 0 Then
+            'First remove readonly attribute, if set
+            SetAttr delfile, vbNormal
+            'Then delete the file
+            Kill delfile
+        End If
+Next I
+delfile = Application.CurrentProject.Path & "\StockTransfer " & monthshort(monthno) & ".xlsx"
+'MsgBox ("check result")
+'On Error Resume Next
+
+'SP
+
+filepath = Application.CurrentProject.Path
+xlApp.Workbooks.Open (filepath & "\GTAX\SP\Excel_17920_SP.xlsx")
+Set xlSht = xlApp.Sheets(1)
+xlSht.Range("E:H").Select
+xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("R:T").Select
+xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("B:B").Select
+xlApp.Selection.NumberFormat = "@"
+xlApp.Sheets(1).Name = "SP_17920"
+xlApp.ActiveWorkbook.SaveAs FileName:=filepath & "\SP_17920", FileFormat:=51
+xlApp.ActiveWorkbook.Close
+'xlApp.ActiveWorkbook.QUIT
+'Workbooks.Close
+
+xlApp.Workbooks.Open (filepath & "\GTAX\SP\Excel_18000_SP.xlsx")
+Set xlSht = xlApp.Sheets(1)
+xlSht.Range("C:C", "Y:Y").Select
+xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+
+xlSht.Range("B:B").Select
+xlApp.Selection.NumberFormat = "@"
+xlApp.Sheets(1).Name = "SP_18000"
+xlApp.ActiveWorkbook.SaveAs FileName:=filepath & "\SP_18000", FileFormat:=51
+xlApp.ActiveWorkbook.Close
+'Workbooks.Close
+'ActiveWorkbook.Close False
+'Workbooks.Close
+
+'NL
+xlApp.Workbooks.Open (filepath & "\GTAX\NL\Excel_17920_NL.xlsx")
+Set xlSht = xlApp.Sheets(1)
+'xlSht.Range("E:H,R:T").Select
+'xlApp.Selection.Replace What:=",", Replacement:=".", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("E:H").Select
+xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("R:T").Select
+xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("B:B").Select
+xlApp.Selection.NumberFormat = "@"
+xlApp.Sheets(1).Name = "NL_17920"
+xlApp.ActiveWorkbook.SaveAs FileName:=filepath & "\NL_17920", FileFormat:=51
+xlApp.ActiveWorkbook.Close
+'xlApp.ActiveWorkbook.QUIT
+xlApp.Workbooks.Open (filepath & "\GTAX\NL\Excel_18000_NL.xlsx")
+Set xlSht = xlApp.Sheets(1)
+'xlSht.Range("C:C", "Y:Y").Select
+'xlApp.Selection.Replace What:=",", Replacement:=".", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("C:C").Select
+xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("Y:Y").Select
+xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("B:B").Select
+xlApp.Selection.NumberFormat = "@"
+xlApp.Sheets(1).Name = "NL_18000"
+xlApp.ActiveWorkbook.SaveAs FileName:=filepath & "\NL_18000", FileFormat:=51
+xlApp.ActiveWorkbook.Close
+'xlApp.ActiveWorkbook.QUIT
+'ActiveWorkbook.Close False
+'Workbooks.Close
+
+'PL
+xlApp.Workbooks.Open (filepath & "\GTAX\PL\Excel_17920_PL.xlsx")
+Set xlSht = xlApp.Sheets(1)
+'xlSht.Range("E:H,R:T").Select
+'xlApp.Selection.Replace What:=",", Replacement:=".", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("E:H").Select
+xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("R:T").Select
+xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("B:B").Select
+xlApp.Selection.NumberFormat = "@"
+xlApp.Sheets(1).Name = "PL_17920"
+xlApp.ActiveWorkbook.SaveAs FileName:=filepath & "\PL_17920", FileFormat:=51
+xlApp.ActiveWorkbook.Close
+'xlApp.ActiveWorkbook.QUIT
+If Dir(filepath & "\GTAX\PL\Excel_18000_PL.xls") <> "" Then
+   xlApp.Workbooks.Open (filepath & "\GTAX\PL\Excel_18000_PL.xlsx")
+Set xlSht = xlApp.Sheets(1)
+'xlSht.Range("C:C", "Y:Y").Select
+'xlApp.Selection.Replace What:=",", Replacement:=".", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("C:C").Select
+xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("Y:Y").Select
+xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("B:B").Select
+xlApp.Selection.NumberFormat = "@"
+xlApp.Sheets(1).Name = "PL_18000"
+xlApp.ActiveWorkbook.SaveAs FileName:=filepath & "\PL_18000", FileFormat:=51
+xlApp.ActiveWorkbook.Close
+Else
+'    MsgBox "File PL 18000 doesn't exist."
+End If
+
+'xlApp.Workbooks.Open (filepath & "\GTAX\PL\Excel_17990_PL.xls")
+'Set xlSht = xlApp.Sheets(1)
+'xlSht.Range("C:D").Select
+'xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+'xlSht.Range("S:T").Select
+'xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+'xlSht.Range("B:B").Select
+'xlApp.Selection.NumberFormat = "@"
+'xlApp.Sheets(1).Name = "PL_17990"
+'xlApp.ActiveWorkbook.SaveAs FileName:=filepath & "\PL_17990", FileFormat:=51
+'xlApp.ActiveWorkbook.Close
+''xlApp.ActiveWorkbook.QUIT
+''Workbooks.Close
+
+'xlApp.Workbooks.Open (filepath & "\GTAX\PL\Excel_17910_PL.xls")
+'Set xlSht = xlApp.Sheets(1)
+'xlSht.Range("D:F").Select
+'xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+'xlSht.Range("V:W").Select
+'xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+'xlSht.Range("A:A").Select
+'xlApp.Selection.NumberFormat = "@"
+'xlApp.Sheets(1).Name = "PL_17910"
+'xlApp.ActiveWorkbook.SaveAs FileName:=filepath & "\PL_17910", FileFormat:=51
+'xlApp.ActiveWorkbook.Close
+''xlApp.ActiveWorkbook.QUIT
+''ActiveWorkbook.Close False
+''Workbooks.Close
+
+
+'RAWDATA
+xlApp.Workbooks.Open (Application.CurrentProject.Path & "\RAW DATA QUERY.xls")
+Set xlSht = xlApp.Sheets(1)
+xlApp.Sheets(1).Name = "RAW DATA QUERY"
+xlSht.Range("M:T").Select
+xlApp.Selection.Replace What:=".", Replacement:="", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("AK:AN").Select
+xlApp.Selection.Replace What:=".", Replacement:="", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlApp.Selection.Replace What:=",", Replacement:=",", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlSht.Range("O:Q").Select
+xlApp.Selection.Replace What:=".", Replacement:="", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+
+'xlSht.Range("J:K").Select
+'xlApp.Selection.Replace What:=".", Replacement:="/", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+'xlSht.Range("U:V").Select
+'xlApp.Selection.Replace What:=".", Replacement:="/", LookAt:=xlPart, SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+xlApp.ActiveWorkbook.SaveAs FileName:=Application.CurrentProject.Path & "\RAW DATA QUERY", FileFormat:=51
+'xlApp.ActiveWorkbook.Close
+'ActiveWorkbook.Close False
+
+xlApp.Quit
+Set xlSht = Nothing
+xlApp.Quit
+Set xlApp = Nothing
+'xlApp.Quit
+'Workbooks.Close
+
+End Sub
+
+Sub imports()
+
+On Error Resume Next
+
+Dim filepatch As String
+
+'RawData
+filepath = Application.CurrentProject.Path & "\RAW DATA QUERY.xlsx"
+DoCmd.TransferSpreadsheet acImport, , "RAW DATA QUERY", filepath, True, "RAW DATA QUERY!"
+'    Set excelbook = excelApp.Workbooks.Open(strFilePath)
+'CN QTY
+filepath = Application.CurrentProject.Path & "\CN QTY.xlsx"
+DoCmd.TransferSpreadsheet acImport, , "CN QTY", filepath, True, "CN QTY!"
+
+'Model_No_HS_Code
+filepath = Application.CurrentProject.Path & "\Model_No_HS_Code.xlsx"
+DoCmd.TransferSpreadsheet acImport, , "Model_No_HS_Code", filepath, True, "Model_No_HS_Code!"
+      
+'weight_new
+filepath = Application.CurrentProject.Path & "\weight_new.xlsx"
+DoCmd.TransferSpreadsheet acImport, , "weight_new", filepath, True, "weight_new!"
+
+'SP
+filepath = Application.CurrentProject.Path & "\SP_17920.xlsx"
+DoCmd.TransferSpreadsheet acImport, , "SP_17920", filepath, True, "SP_17920!"
+
+filepath = Application.CurrentProject.Path & "\SP_18000.xlsX"
+DoCmd.TransferSpreadsheet acImport, , "SP_18000", filepath, True, "SP_18000!"
+
+'NL
+filepath = Application.CurrentProject.Path & "\NL_17920.xlsx"
+DoCmd.TransferSpreadsheet acImport, , "NL_17920", filepath, True, "NL_17920!"
+
+filepath = Application.CurrentProject.Path & "\NL_18000.xlsX"
+DoCmd.TransferSpreadsheet acImport, , "NL_18000", filepath, True, "NL_18000!"
+
+'PL
+filepath = Application.CurrentProject.Path & "\PL_17920.xlsx"
+DoCmd.TransferSpreadsheet acImport, , "PL_17920", filepath, True, "PL_17920!"
+
+filepath = Application.CurrentProject.Path & "\PL_18000.xlsx"
+DoCmd.TransferSpreadsheet acImport, , "PL_18000", filepath, True, "PL_18000!"
+
+filepath = Application.CurrentProject.Path & "\PL_17990.xls"
+DoCmd.TransferSpreadsheet acImport, , "PL_17990", filepath, True, "PL_17990!"
+
+filepath = Application.CurrentProject.Path & "\PL_17910.xls"
+DoCmd.TransferSpreadsheet acImport, , "PL_17910", filepath, True, "PL_17910!"
+
+
+
+'ActiveWorkbook.Close False
+'Set xlSht = Nothing
+'Workbooks.Close
+
+End Sub
+Private Sub StockTransferPivots_Click()
+
+Dim filepath As String
+'Dim xxlApp As Object
+'Set xxlApp = CreateObject("Excel.Application")
+
+filepath = Application.CurrentProject.Path & "\StockTransfer " & monthshort(monthno) & ".xlsx"
+
+'MsgBox (filepath)
+Workbooks.Open (filepath)
+Sheets.Add After:=Sheets(1)
+Sheets(2).Name = "EFA_TO_pivots"
+
+    ActiveWorkbook.PivotCaches.Create(SourceType:=xlDatabase, SourceData:= _
+        "EFA_EFB", Version:=xlPivotTableVersion14).CreatePivotTable TableDestination _
+        :="EFA_TO_pivots!R1C1", TableName:="efa_efb_pivot", DefaultVersion:= _
+        xlPivotTableVersion14
+    With ActiveSheet.PivotTables("efa_efb_pivot").PivotFields("Org Code")
+        .Orientation = xlRowField
+        .Position = 1
+    End With
+    With ActiveSheet.PivotTables("efa_efb_pivot").PivotFields("Shipment No")
+        .Orientation = xlRowField
+        .Position = 2
+    End With
+    ActiveSheet.PivotTables("efa_efb_pivot").AddDataField ActiveSheet. _
+        PivotTables("efa_efb_pivot").PivotFields("Receive Amt EUR"), _
+        "Sum Receive Amt EUR", xlSum
+    ActiveSheet.PivotTables("efa_efb_pivot").AddDataField ActiveSheet. _
+        PivotTables("efa_efb_pivot").PivotFields("Receive Amt PLN"), _
+        "Sum Receive Amt PLN", xlSum
+    ActiveSheet.PivotTables("efa_efb_pivot").AddDataField ActiveSheet. _
+        PivotTables("efa_efb_pivot").PivotFields("Receive Qty"), _
+        "Sum Receive Qty", xlSum
+  
+    ActiveWorkbook.PivotCaches.Create(SourceType:=xlDatabase, SourceData:= _
+        "EFA_EFC", Version:=xlPivotTableVersion14).CreatePivotTable TableDestination _
+        :="EFA_TO_pivots!R1C6", TableName:="efa_efc_pivot", DefaultVersion:= _
+        xlPivotTableVersion14
+    With ActiveSheet.PivotTables("efa_efc_pivot").PivotFields("Org Code")
+        .Orientation = xlRowField
+        .Position = 1
+    End With
+    With ActiveSheet.PivotTables("efa_efc_pivot").PivotFields("Shipment No")
+        .Orientation = xlRowField
+        .Position = 2
+    End With
+    ActiveSheet.PivotTables("efa_efc_pivot").AddDataField ActiveSheet. _
+        PivotTables("efa_efc_pivot").PivotFields("Receive Amt EUR"), _
+        "Sum Receive Amt EUR", xlSum
+    ActiveSheet.PivotTables("efa_efc_pivot").AddDataField ActiveSheet. _
+        PivotTables("efa_efc_pivot").PivotFields("Receive Amt PLN"), _
+        "Sum Receive Amt PLN", xlSum
+    ActiveSheet.PivotTables("efa_efc_pivot").AddDataField ActiveSheet. _
+        PivotTables("efa_efc_pivot").PivotFields("Receive Qty"), _
+        "Sum Receive Qty", xlSum
+  
+    ActiveWorkbook.PivotCaches.Create(SourceType:=xlDatabase, SourceData:= _
+        "EFA_EEF", Version:=xlPivotTableVersion14).CreatePivotTable TableDestination _
+        :="EFA_TO_pivots!R1C11", TableName:="efa_eef_pivot", DefaultVersion:= _
+        xlPivotTableVersion14
+    With ActiveSheet.PivotTables("efa_eef_pivot").PivotFields("Org Code")
+        .Orientation = xlRowField
+        .Position = 1
+    End With
+    With ActiveSheet.PivotTables("efa_eef_pivot").PivotFields("Shipment No")
+        .Orientation = xlRowField
+        .Position = 2
+    End With
+    ActiveSheet.PivotTables("efa_eef_pivot").AddDataField ActiveSheet. _
+        PivotTables("efa_eef_pivot").PivotFields("Receive Amt EUR"), _
+        "Sum Receive Amt EUR", xlSum
+    ActiveSheet.PivotTables("efa_eef_pivot").AddDataField ActiveSheet. _
+        PivotTables("efa_eef_pivot").PivotFields("Receive Amt PLN"), _
+        "Sum Receive Amt PLN", xlSum
+    ActiveSheet.PivotTables("efa_eef_pivot").AddDataField ActiveSheet. _
+        PivotTables("efa_eef_pivot").PivotFields("Receive Qty"), _
+        "Sum Receive Qty", xlSum
+        
+'    Sheets("EFA_TO_pivots").Select
+    With ActiveWorkbook.Sheets("EFA_TO_pivots").Tab
+        .ThemeColor = xlThemeColorAccent4
+        .TintAndShade = 0.599993896298105
+    End With
+'=====================================================================================================
+    Sheets.Add After:=Sheets(5)
+    Sheets(6).Name = "EFB_TO_pivots"
+
+      ActiveWorkbook.PivotCaches.Create(SourceType:=xlDatabase, SourceData:= _
+        "EFB_EFA", Version:=xlPivotTableVersion14).CreatePivotTable TableDestination _
+        :="EFB_TO_pivots!R1C1", TableName:="efb_efa_pivot", DefaultVersion:= _
+        xlPivotTableVersion14
+    
+    With ActiveSheet.PivotTables("efb_efa_pivot").PivotFields("Org Code")
+        .Orientation = xlRowField
+        .Position = 1
+    End With
+    With ActiveSheet.PivotTables("efb_efa_pivot").PivotFields("Shipment No")
+        .Orientation = xlRowField
+        .Position = 2
+    End With
+    ActiveSheet.PivotTables("efb_efa_pivot").AddDataField ActiveSheet. _
+        PivotTables("efb_efa_pivot").PivotFields("Receive Amt EUR"), _
+        "Sum Receive Amt EUR", xlSum
+    ActiveSheet.PivotTables("efb_efa_pivot").AddDataField ActiveSheet. _
+        PivotTables("efb_efa_pivot").PivotFields("Receive Amt PLN"), _
+        "Sum Receive Amt PLN", xlSum
+    ActiveSheet.PivotTables("efb_efa_pivot").AddDataField ActiveSheet. _
+        PivotTables("efb_efa_pivot").PivotFields("Receive Qty"), _
+        "Sum Receive Qty", xlSum
+  
+    ActiveWorkbook.PivotCaches.Create(SourceType:=xlDatabase, SourceData:= _
+        "EFB_EFC", Version:=xlPivotTableVersion14).CreatePivotTable TableDestination _
+        :="EFB_TO_pivots!R1C6", TableName:="efb_efc_pivot", DefaultVersion:= _
+        xlPivotTableVersion14
+    With ActiveSheet.PivotTables("efb_efc_pivot").PivotFields("Org Code")
+        .Orientation = xlRowField
+        .Position = 1
+    End With
+    With ActiveSheet.PivotTables("efb_efc_pivot").PivotFields("Shipment No")
+        .Orientation = xlRowField
+        .Position = 2
+    End With
+    ActiveSheet.PivotTables("efb_efc_pivot").AddDataField ActiveSheet. _
+        PivotTables("efb_efc_pivot").PivotFields("Receive Amt EUR"), _
+        "Sum Receive Amt EUR", xlSum
+    ActiveSheet.PivotTables("efb_efc_pivot").AddDataField ActiveSheet. _
+        PivotTables("efb_efc_pivot").PivotFields("Receive Amt PLN"), _
+        "Sum Receive Amt PLN", xlSum
+    ActiveSheet.PivotTables("efb_efc_pivot").AddDataField ActiveSheet. _
+        PivotTables("efb_efc_pivot").PivotFields("Receive Qty"), _
+        "Sum Receive Qty", xlSum
+  
+    ActiveWorkbook.PivotCaches.Create(SourceType:=xlDatabase, SourceData:= _
+        "EFB_EEF", Version:=xlPivotTableVersion14).CreatePivotTable TableDestination _
+        :="EFB_TO_pivots!R1C11", TableName:="efb_eef_pivot", DefaultVersion:= _
+        xlPivotTableVersion14
+    With ActiveSheet.PivotTables("efb_eef_pivot").PivotFields("Org Code")
+        .Orientation = xlRowField
+        .Position = 1
+    End With
+    With ActiveSheet.PivotTables("efb_eef_pivot").PivotFields("Shipment No")
+        .Orientation = xlRowField
+        .Position = 2
+    End With
+    ActiveSheet.PivotTables("efb_eef_pivot").AddDataField ActiveSheet. _
+        PivotTables("efb_eef_pivot").PivotFields("Receive Amt EUR"), _
+        "Sum Receive Amt EUR", xlSum
+    ActiveSheet.PivotTables("efb_eef_pivot").AddDataField ActiveSheet. _
+        PivotTables("efb_eef_pivot").PivotFields("Receive Amt PLN"), _
+        "Sum Receive Amt PLN", xlSum
+    ActiveSheet.PivotTables("efb_eef_pivot").AddDataField ActiveSheet. _
+        PivotTables("efb_eef_pivot").PivotFields("Receive Qty"), _
+        "Sum Receive Qty", xlSum
+        
+    With ActiveWorkbook.Sheets("EFB_TO_pivots").Tab
+        .ThemeColor = xlThemeColorAccent5
+        .TintAndShade = 0.599993896298105
+    End With
+'=====================================================================================================
+    Sheets.Add After:=Sheets(9)
+    Sheets(10).Name = "EFC_TO_pivots"
+
+      ActiveWorkbook.PivotCaches.Create(SourceType:=xlDatabase, SourceData:= _
+        "EFC_EFA", Version:=xlPivotTableVersion14).CreatePivotTable TableDestination _
+        :="EFC_TO_pivots!R1C1", TableName:="efc_efa_pivot", DefaultVersion:= _
+        xlPivotTableVersion14
+    
+    With ActiveSheet.PivotTables("efc_efa_pivot").PivotFields("Org Code")
+        .Orientation = xlRowField
+        .Position = 1
+    End With
+    With ActiveSheet.PivotTables("efc_efa_pivot").PivotFields("Shipment No")
+        .Orientation = xlRowField
+        .Position = 2
+    End With
+    ActiveSheet.PivotTables("efc_efa_pivot").AddDataField ActiveSheet. _
+        PivotTables("efc_efa_pivot").PivotFields("Receive Amt EUR"), _
+        "Sum Receive Amt EUR", xlSum
+    ActiveSheet.PivotTables("efc_efa_pivot").AddDataField ActiveSheet. _
+        PivotTables("efc_efa_pivot").PivotFields("Receive Amt PLN"), _
+        "Sum Receive Amt PLN", xlSum
+    ActiveSheet.PivotTables("efc_efa_pivot").AddDataField ActiveSheet. _
+        PivotTables("efc_efa_pivot").PivotFields("Receive Qty"), _
+        "Sum Receive Qty", xlSum
+  
+    ActiveWorkbook.PivotCaches.Create(SourceType:=xlDatabase, SourceData:= _
+        "EFC_EFB", Version:=xlPivotTableVersion14).CreatePivotTable TableDestination _
+        :="EFC_TO_pivots!R1C6", TableName:="efc_efb_pivot", DefaultVersion:= _
+        xlPivotTableVersion14
+    With ActiveSheet.PivotTables("efc_efb_pivot").PivotFields("Org Code")
+        .Orientation = xlRowField
+        .Position = 1
+    End With
+    With ActiveSheet.PivotTables("efc_efb_pivot").PivotFields("Shipment No")
+        .Orientation = xlRowField
+        .Position = 2
+    End With
+    ActiveSheet.PivotTables("efc_efb_pivot").AddDataField ActiveSheet. _
+        PivotTables("efc_efb_pivot").PivotFields("Receive Amt EUR"), _
+        "Sum Receive Amt EUR", xlSum
+    ActiveSheet.PivotTables("efc_efb_pivot").AddDataField ActiveSheet. _
+        PivotTables("efc_efb_pivot").PivotFields("Receive Amt PLN"), _
+        "Sum Receive Amt PLN", xlSum
+    ActiveSheet.PivotTables("efc_efb_pivot").AddDataField ActiveSheet. _
+        PivotTables("efc_efb_pivot").PivotFields("Receive Qty"), _
+        "Sum Receive Qty", xlSum
+  
+    ActiveWorkbook.PivotCaches.Create(SourceType:=xlDatabase, SourceData:= _
+        "EFC_EEF", Version:=xlPivotTableVersion14).CreatePivotTable TableDestination _
+        :="EFC_TO_pivots!R1C11", TableName:="efc_eef_pivot", DefaultVersion:= _
+        xlPivotTableVersion14
+    With ActiveSheet.PivotTables("efc_eef_pivot").PivotFields("Org Code")
+        .Orientation = xlRowField
+        .Position = 1
+    End With
+    With ActiveSheet.PivotTables("efc_eef_pivot").PivotFields("Shipment No")
+        .Orientation = xlRowField
+        .Position = 2
+    End With
+    ActiveSheet.PivotTables("efc_eef_pivot").AddDataField ActiveSheet. _
+        PivotTables("efc_eef_pivot").PivotFields("Receive Amt EUR"), _
+        "Sum Receive Amt EUR", xlSum
+    ActiveSheet.PivotTables("efc_eef_pivot").AddDataField ActiveSheet. _
+        PivotTables("efc_eef_pivot").PivotFields("Receive Amt PLN"), _
+        "Sum Receive Amt PLN", xlSum
+    ActiveSheet.PivotTables("efc_eef_pivot").AddDataField ActiveSheet. _
+        PivotTables("efc_eef_pivot").PivotFields("Receive Qty"), _
+        "Sum Receive Qty", xlSum
+    
+    With ActiveWorkbook.Sheets("EFC_TO_pivots").Tab
+        .ThemeColor = xlThemeColorAccent6
+        .TintAndShade = 0.599993896298105
+    End With
+    
+'=====================================================================================================
+    On Error Resume Next
+    
+    Sheets.Add After:=Sheets(13)
+    Sheets(14).Name = "EEF_TO_pivots"
+
+      ActiveWorkbook.PivotCaches.Create(SourceType:=xlDatabase, SourceData:= _
+        "EEF_EFA", Version:=xlPivotTableVersion14).CreatePivotTable TableDestination _
+        :="EEF_TO_pivots!R1C1", TableName:="eef_efa_pivot", DefaultVersion:= _
+        xlPivotTableVersion14
+    
+    With ActiveSheet.PivotTables("eef_efa_pivot").PivotFields("Org Code")
+        .Orientation = xlRowField
+        .Position = 1
+    End With
+    With ActiveSheet.PivotTables("eef_efa_pivot").PivotFields("Shipment No")
+        .Orientation = xlRowField
+        .Position = 2
+    End With
+    ActiveSheet.PivotTables("eef_efa_pivot").AddDataField ActiveSheet. _
+        PivotTables("eef_efa_pivot").PivotFields("Receive Amt EUR"), _
+        "Sum Receive Amt EUR", xlSum
+    ActiveSheet.PivotTables("eef_efa_pivot").AddDataField ActiveSheet. _
+        PivotTables("eef_efa_pivot").PivotFields("Receive Amt PLN"), _
+        "Sum Receive Amt PLN", xlSum
+    ActiveSheet.PivotTables("eef_efa_pivot").AddDataField ActiveSheet. _
+        PivotTables("eef_efa_pivot").PivotFields("Receive Qty"), _
+        "Sum Receive Qty", xlSum
+  
+    ActiveWorkbook.PivotCaches.Create(SourceType:=xlDatabase, SourceData:= _
+        "EEF_EFB", Version:=xlPivotTableVersion14).CreatePivotTable TableDestination _
+        :="EEF_TO_pivots!R1C6", TableName:="eef_efb_pivot", DefaultVersion:= _
+        xlPivotTableVersion14
+    With ActiveSheet.PivotTables("eef_efb_pivot").PivotFields("Org Code")
+        .Orientation = xlRowField
+        .Position = 1
+    End With
+    With ActiveSheet.PivotTables("eef_efb_pivot").PivotFields("Shipment No")
+        .Orientation = xlRowField
+        .Position = 2
+    End With
+    ActiveSheet.PivotTables("eef_efb_pivot").AddDataField ActiveSheet. _
+        PivotTables("eef_efb_pivot").PivotFields("Receive Amt EUR"), _
+        "Sum Receive Amt EUR", xlSum
+    ActiveSheet.PivotTables("eef_efb_pivot").AddDataField ActiveSheet. _
+        PivotTables("eef_efb_pivot").PivotFields("Receive Amt PLN"), _
+        "Sum Receive Amt PLN", xlSum
+    ActiveSheet.PivotTables("eef_efb_pivot").AddDataField ActiveSheet. _
+        PivotTables("eef_efb_pivot").PivotFields("Receive Qty"), _
+        "Sum Receive Qty", xlSum
+    
+  
+    ActiveWorkbook.PivotCaches.Create(SourceType:=xlDatabase, SourceData:= _
+        "EEF_EFC", Version:=xlPivotTableVersion14).CreatePivotTable TableDestination _
+        :="EEF_TO_pivots!R1C11", TableName:="eef_efc_pivot", DefaultVersion:= _
+        xlPivotTableVersion14
+    With ActiveSheet.PivotTables("eef_efc_pivot").PivotFields("Org Code")
+        .Orientation = xlRowField
+        .Position = 1
+    End With
+    With ActiveSheet.PivotTables("eef_efc_pivot").PivotFields("Shipment No")
+        .Orientation = xlRowField
+        .Position = 2
+    End With
+    ActiveSheet.PivotTables("eef_efc_pivot").AddDataField ActiveSheet. _
+        PivotTables("efc_eef_pivot").PivotFields("Receive Amt EUR"), _
+        "Sum Receive Amt EUR", xlSum
+    ActiveSheet.PivotTables("efc_eef_pivot").AddDataField ActiveSheet. _
+        PivotTables("eef_efc_pivot").PivotFields("Receive Amt PLN"), _
+        "Sum Receive Amt PLN", xlSum
+    ActiveSheet.PivotTables("eef_efc_pivot").AddDataField ActiveSheet. _
+        PivotTables("eef_efc_pivot").PivotFields("Receive Qty"), _
+        "Sum Receive Qty", xlSum
+    
+    With ActiveWorkbook.Sheets("EEF_TO_pivots").Tab
+        .ThemeColor = xlThemeColorAccent6
+        .TintAndShade = 0.597993896298105
+    End With
+ActiveWorkbook.Save
+ActiveWorkbook.Close False
+'MsgBox ("Done")
+
+End Sub
+
+Private Sub ALIGN()
+
+Dim filepath As String
+Dim I As Integer
+Dim file As String
+
+
+Workbooks.Open (Application.CurrentProject.Path & "\COO HS.xlsx")
+Workbooks.Open (Application.CurrentProject.Path & "\weight_new.xlsx")
+Workbooks.Open (Application.CurrentProject.Path & "\Model_No_HS_Code.xlsx")
+
+filesarray2 = Array("\Intrastat_SP ", "\Intrastat_NL ", "\Intrastat_PL ")
+
+For n = 0 To UBound(filesarray2)
+file = filesarray2(n)
+
+filepath = Application.CurrentProject.Path & file & monthshort(monthno) & ".xlsx"
+
+Workbooks.Open (filepath)
+For I = 1 To 2
+    Dim wb As Workbook
+    Dim ws As Worksheet
+    Set wb = ActiveWorkbook
+    Set ws = Sheets(I)
+    wb.Activate
+    ws.Select
+
+LICZ = Range("A" & Sheets(I).Rows.Count).End(xlUp).Row
+
+    Range("AQ1") = "WEIGHT"
+    Range("AR1") = "MASS"
+    Range("AS1") = "CN CODE"
+    Range("AT1") = "COO"
+    Range("AU1") = "QTY"
+    Range("AV1") = "AMT PLN"
+    Range("AW1") = "AMT EUR"
+    Range("AX1") = "TRANSACTION TYP"
+    
+'    For Z = 2 To LICZ
+'        Range("AQ" & Z).FormulaR1C1 = _
+'            "=IF(RC[-1]="""",VLOOKUP(RC[-35],'weight_new.xlsx'!C1:C2,2,1),RC[-1])"
+'        Range("AR" & Z).FormulaR1C1 = "=RC[-1]*RC[-28]"
+'        Range("AS" & Z).FormulaR1C1 = _
+'          "=IF(RC[-4]="""",VLOOKUP(RC[-37],'D:\MyDocuments\MojeDokumenty\INTRASTAT 0.6\Model_No_HS_Code.xlsx]Model_No_HS_Code'!C1:C2,2,1),RC[-4])"
+'        Range("AT" & Z).FormulaR1C1 = _
+'            "=IF(RC[-6]="""",VLOOKUP(RC[-38],'D:\MyDocuments\MojeDokumenty\INTRASTAT 0.6\[COO HS.xlsx]COO HS'!C1:C2,2,1),RC[-6])"
+'        Range("AQ" & Z).FormulaR1C1 = _
+'            "=IF(RC[-1]="""",VLOOKUP(RC[-35],'weight_new.xlsx'!C1:C2,2,1),RC[-1])"
+'        Range("AR" & Z).FormulaR1C1 = "=RC[-1]*RC[-28]"
+'        Range("AS" & Z).FormulaR1C1 = _
+'          "=IF(RC[-4]="""",VLOOKUP(RC[-37],'Model_No_HS_Code.xlsx'!C1:C2,2,1),RC[-4])"
+'        Range("AT" & Z).FormulaR1C1 = _
+'             "=IF(RC[-6]="""",VLOOKUP(RC[-38],'COO HS.xlsx'!C1:C2,2,1),RC[-6])"
+'        Range("AU" & Z).FormulaR1C1 = "=RC[-31]"
+'        Range("AV" & Z).FormulaR1C1 = "=RC[-30]"
+'        Range("AX" & Z) = "99"
+'    Next Z
+
+        Range("AQ2").FormulaR1C1 = _
+            "=IF(RC[-1]="""",VLOOKUP(RC[-35],'weight_new.xlsx'!C1:C2,2,1),RC[-1])"
+        Range("AQ2").AutoFill Destination:=Range("AQ2:AQ" & LICZ)
+        Range("AR2").FormulaR1C1 = "=RC[-1]*RC[-28]"
+        Range("AR2").AutoFill Destination:=Range("AR2:AR" & LICZ)
+        Range("AS2").FormulaR1C1 = _
+          "=IF(RC[-4]="""",VLOOKUP(RC[-37],'Model_No_HS_Code.xlsx'!C1:C2,2,1),RC[-4])"
+        Range("AS2").AutoFill Destination:=Range("AS2:AS" & LICZ)
+        Range("AT2").FormulaR1C1 = _
+             "=IF(RC[-6]="""",VLOOKUP(RC[-38],'COO HS.xlsx'!C1:C2,2,1),RC[-6])"
+        Range("AT2").AutoFill Destination:=Range("AT2:AT" & LICZ)
+        Range("AU2").FormulaR1C1 = "=RC[-31]"
+        Range("AU2").AutoFill Destination:=Range("AU2:AU" & LICZ)
+        Range("AV2").FormulaR1C1 = "=RC[-30]"
+        Range("AV2").AutoFill Destination:=Range("AV2:AV" & LICZ)
+        Range("AW2").FormulaR1C1 = "=RC[-29]"
+        Range("AW2").AutoFill Destination:=Range("AW2:AW" & LICZ)
+        Range("AX2") = "99"
+        Range("AX2").AutoFill Destination:=Range("AX2:AX" & LICZ)
+    
+    Columns("AQ:AX").Select
+     With Selection.Interior
+        .PatternColorIndex = xlAutomatic
+        .Color = 65535
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+     End With
+'      With Range("AQ:AX")
+'        .Value = .Value
+'      End With
+        
+Next I
+
+
+Set ws = Sheets(3)
+ws.Select
+LICZ = ws.Range("A" & Sheets(3).Rows.Count).End(xlUp).Row
+    
+    Range("AJ1") = "WEIGHT"
+    Range("AK1").FormulaR1C1 = "MASS"
+    Range("AL1").FormulaR1C1 = "CN CODE"
+    Range("AM1").FormulaR1C1 = "COO"
+    Range("AN1") = "QTY"
+    Range("AO1") = "AMT PLN"
+    Range("AP1") = "AMT EUR"
+    Range("AQ1") = "SHIP TO COUNTRY"
+    Range("AR1") = "TRANSACTION TYP"
+    
+'For Z = 2 To LICZ
+
+'    Range("AI" & LICZ).FormulaR1C1 = _
+'        "=IF(RC[-2]="""",VLOOKUP(RC[-18],'D:\MyDocuments\MojeDokumenty\INTRASTAT 0.6\[weight_new.xlsx]weight_new!C1:C2,2,1),RC[-2])"
+'    Range("AJ" & LICZ).FormulaR1C1 = "=RC[-1]*RC[-4]"
+'    Range("AK" & LICZ).FormulaR1C1 = _
+'        "=IF(RC[-9]="""",VLOOKUP(RC[-20],'D:\MyDocuments\MojeDokumenty\INTRASTAT 0.6\[Model_No_HS_Code.xlsx]Model_No_HS_Code'!C1:C2,2,1),RC[-9])"
+'    Range("AL" & LICZ).FormulaR1C1 = _
+'        "=IF(RC[-9]="""",VLOOKUP(RC[-21],'D:\MyDocuments\MojeDokumenty\INTRASTAT 0.6\[COO HS.xlsx]COO HS'!C1:C2,2,1),RC[-9])"
+'    Range("AM" & LICZ).FormulaR1C1 = "=RC[-7]"
+'    Range("AN" & LICZ).FormulaR1C1 = "=RC[-9]"
+'    Range("AP" & LICZ).FormulaR1C1 = "=RC[-19]"
+'    Range("AQ" & LICZ).FormulaR1C1 = "=RC[-13]"
+
+'    Range("AJ" & Z).FormulaR1C1 = _
+'        "=IF(RC[-2]="""",VLOOKUP(RC[-16],'weight_new.xlsx'!C1:C2,2,1),RC[-6])"
+'    Range("AK" & Z).FormulaR1C1 = "=RC[-1]*RC[-2]"
+'    Range("AL" & Z).FormulaR1C1 = _
+'        "=IF(RC[-9]="""",VLOOKUP(RC[-16],'Model_No_HS_Code.xlsx'!C1:C2,2,1),RC[-9])"
+'    Range("AM" & Z).FormulaR1C1 = _
+'        "=IF(RC[-5]="""",VLOOKUP(RC[-19],'COO HS.xlsx'!C1:C2,2,1),RC[-5])"
+'    Range("AN" & Z).FormulaR1C1 = "=RC[-5]"
+'    Range("AO" & Z).FormulaR1C1 = "=RC[-9]"
+'    Range("AP" & Z).FormulaR1C1 = "=RC[-9]"
+'    Range("AQ" & Z).FormulaR1C1 = "=RC[-20]"
+'    Range("AR" & Z).FormulaR1C1 = "=RC[-13]"
+'Next Z
+        
+    Range("AJ2").FormulaR1C1 = _
+        "=IF(RC[-6]="""",VLOOKUP(RC[-19],'weight_new.xlsx'!C1:C2,2,1),RC[-6])"
+    Range("AJ2").AutoFill Destination:=Range("AJ2:AJ" & LICZ)
+    Range("AK2").FormulaR1C1 = "=RC[-1]*RC[-2]"
+    Range("AK2").AutoFill Destination:=Range("AK2:AK" & LICZ)
+    Range("AL2").FormulaR1C1 = _
+        "=IF(RC[-9]="""",VLOOKUP(RC[-21],'Model_No_HS_Code.xlsx'!C1:C2,2,1),RC[-9])"
+    Range("AL2").AutoFill Destination:=Range("AL2:AL" & LICZ)
+    Range("AM2").FormulaR1C1 = _
+        "=IF(RC[-5]="""",VLOOKUP(RC[-22],'COO HS.xlsx'!C1:C2,2,1),RC[-5])"
+    Range("AM2").AutoFill Destination:=Range("AM2:AM" & LICZ)
+    Range("AN2").FormulaR1C1 = "=RC[-5]"
+    Range("AN2").AutoFill Destination:=Range("AN2:AN" & LICZ)
+    Range("AO2").FormulaR1C1 = "=RC[-9]"
+    Range("AO2").AutoFill Destination:=Range("AO2:AO" & LICZ)
+    Range("AP2").FormulaR1C1 = "=RC[-9]"
+    Range("AP2").AutoFill Destination:=Range("AP2:AP" & LICZ)
+    Range("AQ2").FormulaR1C1 = "=RC[-20]"
+    Range("AQ2").AutoFill Destination:=Range("AQ2:AQ" & LICZ)
+    Range("AR2").FormulaR1C1 = "=RC[-13]"
+    Range("AR2").AutoFill Destination:=Range("AR2:AR" & LICZ)
+    
+    With Columns("AJ:AR").Interior
+        .PatternColorIndex = xlAutomatic
+        .Color = 65535
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+    End With
+'    With Range("AJ:AR")
+'        .Value = .Value
+'    End With
+  
+Set ws = Sheets(4)
+ws.Select
+LICZ = ws.Range("A" & Sheets(4).Rows.Count).End(xlUp).Row
+    Range("AF1") = "WEIGHT"
+    Range("AG1") = "MASS"
+    Range("AH1") = "CN CODE"
+    Range("AI1") = "COO"
+    Range("AJ1") = "QTY"
+    Range("AK1") = "AMT PLN"
+    Range("AL1") = "AMT EUR"
+    Range("AM1") = "SHIP TO COUNTRY"
+    Range("AN1") = "TRANSACTIONTYPE"
+    
+'For Z = 2 To LICZ
+
+'    Range("AF" & LICZ).FormulaR1C1 = _
+'        "=IF(RC[-2]="""",VLOOKUP(RC[-10],'D:\MyDocuments\MojeDokumenty\INTRASTAT 0.6\[weight_new.xlsx]weight_new!C1:C2,2,1),RC[-2])"
+'    Range("AG" & LICZ).FormulaR1C1 = "=RC[-1]*RC[-25]"
+'    Range("AH" & LICZ).FormulaR1C1 = _
+'        "=IF(RC[-4]="""",VLOOKUP(RC[-11],'D:\MyDocuments\MojeDokumenty\INTRASTAT 0.6\[Model_No_HS_Code.xlsx]Model_No_HS_Code'!C1:C2,2,1),RC[-4])"
+'    Range("AI" & LICZ).FormulaR1C1 = _
+'        "=IF(RC[-3]="""",VLOOKUP(RC[-12],'D:\MyDocuments\MojeDokumenty\INTRASTAT 0.6\[COO HS.xlsx]COO HS'!C1:C2,2,1),RC[-3])"
+'    Range("AJ" & LICZ).FormulaR1C1 = "=RC[-27]"
+'    Range("AK" & LICZ).FormulaR1C1 = "=RC[-33]"
+'    Range("AL" & LICZ).FormulaR1C1 = "=RC[-26]"
+'    Range("AM" & LICZ).FormulaR1C1 = "11"
+'Next Z
+
+    Range("AF2").FormulaR1C1 = _
+        "=IF(RC[-2]="""",VLOOKUP(RC[-10],'weight_new.xlsx'!C1:C2,2,1),RC[-2])"
+    Range("AF2").AutoFill Destination:=Range("AF2:AF" & LICZ)
+    Range("AG2").FormulaR1C1 = "=RC[-1]*RC[-25]"
+    Range("AG2").AutoFill Destination:=Range("AG2:AG" & LICZ)
+    Range("AH2").FormulaR1C1 = _
+        "=IF(RC[-5]="""",VLOOKUP(RC[-12],'Model_No_HS_Code.xlsx'!C1:C2,2,1),RC[-5])"
+    Range("AH2").AutoFill Destination:=Range("AH2:AH" & LICZ)
+    Range("AI2").FormulaR1C1 = _
+        "=IF(RC[-4]="""",VLOOKUP(RC[-13],'COO HS.xlsx'!C1:C2,2,1),RC[-4])"
+    Range("AI2").AutoFill Destination:=Range("AI2:AI" & LICZ)
+    Range("AJ2").FormulaR1C1 = "=RC[-28]"
+    Range("AJ2").AutoFill Destination:=Range("AJ2:AJ" & LICZ)
+    Range("AK2").FormulaR1C1 = "=RC[-34]"
+    Range("AK2").AutoFill Destination:=Range("AK2:AK" & LICZ)
+    Range("AM2").FormulaR1C1 = "=RC[-27]"
+    Range("AM2").AutoFill Destination:=Range("AM2:AM" & LICZ)
+    Range("AN2").FormulaR1C1 = "11"
+    Range("AN2").AutoFill Destination:=Range("AN2:AN" & LICZ)
+
+       With Columns("AF:AO").Interior
+        .PatternColorIndex = xlAutomatic
+        .Color = 65535
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+    End With
+        
+'    With Range("AF:AO")
+'        .Value = .Value
+'    End With
+    
+ActiveWorkbook.Save
+ActiveWorkbook.Close False
+
+
+Next n
+'MsgBox ("Done")
+'Workbooks.Close False
+End Sub
