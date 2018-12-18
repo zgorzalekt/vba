@@ -1,0 +1,71 @@
+import requests
+import urllib3
+from bs4 import BeautifulSoup
+
+from datetime import timedelta, date
+import time
+from selenium.common.exceptions import NoSuchElementException 
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+
+urllib3.disable_warnings()
+link = "https://historiapojazdu.gov.pl/"
+sauce = requests.get(link , verify=False)
+
+def daterange(start_date, end_date):
+    for n in range(int ((end_date - start_date).days)):
+        yield start_date + timedelta(n)
+
+def check_exists_by_id(id):
+    try:
+        #time.sleep(1)
+        driver.find_element_by_id(id)
+    except NoSuchElementException:
+        return False
+    return True
+
+start_date = date(2007, 8, 1)
+end_date = date(2008, 12, 31)
+vin = "JMZER893600134066"
+rej = "LRYCK83"
+#http://en.vindecoder.pl/
+
+
+driver = webdriver.Firefox()
+site = 'https://historiapojazdu.gov.pl/'
+driver.get(site)
+
+for single_date in daterange(start_date, end_date):
+    spr_date = single_date.strftime("%d.%m.%Y")
+    spr_date = str(spr_date)
+    print (spr_date)
+    
+    rej_inpt = driver.find_element_by_id("_historiapojazduportlet_WAR_historiapojazduportlet_:rej")
+    rej_inpt.clear()
+    rej_inpt.click()
+    rej_inpt.send_keys(rej)
+    
+    vin_inpt = driver.find_element_by_id("_historiapojazduportlet_WAR_historiapojazduportlet_:vin")
+    vin_inpt.clear()
+    vin_inpt.click()
+    vin_inpt.send_keys(vin)
+    
+    data_inpt = driver.find_element_by_id("_historiapojazduportlet_WAR_historiapojazduportlet_:data")
+    data_inpt.clear()
+    data_inpt.click()
+    data_inpt.send_keys("spr_date")
+#    driver.execute_script("document.getElementById('_historiapojazduportlet_WAR_historiapojazduportlet_:data')[0]")
+    driver.execute_script("document.getElementById('_historiapojazduportlet_WAR_historiapojazduportlet_:data').value='" + spr_date +"'")
+    
+    guzik = driver.find_element_by_id("_historiapojazduportlet_WAR_historiapojazduportlet_:btnSprawdz")
+    guzik.click()
+   
+##password = driver.find_element_by_id("Login_password_id:Login_password_id_inputText")
+    #time.sleep(1)
+    if check_exists_by_id("_historiapojazduportlet_WAR_historiapojazduportlet_:j_idt7") == True:
+        print("ZNALEZIONO! VIN:" , vin , "REJESTRACJA:" , rej , "DATA REJESTRACJI:" , spr_date)
+        break
+    else:
+        print("brak, dalej...")
+        driver.get(site)
