@@ -1,0 +1,133 @@
+Sub pelnomocnictwa()
+
+Dim objData As New DataObject  'set reference to Microsoft Forms 2.0 Object Library
+Dim strTemp As String
+Dim i As Long, FN As Integer
+Dim FilePath As String, FileName As String
+Dim MyRange As Range
+Dim cell As Variant
+
+Application.ScreenUpdating = False
+Application.DisplayAlerts = False
+Application.CutCopyMode = False
+
+Set twb = ThisWorkbook
+Set tws = twb.Sheets(1)
+twb.Sheets("dane").Delete
+twb.Sheets("wynik").Delete
+Set osnd = twb.Sheets.Add(After:= _
+             twb.Sheets(twb.Sheets.Count))
+osnd.Name = "dane"
+Set osnw = twb.Sheets.Add(After:= _
+             twb.Sheets(twb.Sheets.Count))
+osnw.Name = "wynik"
+twpath = Application.ActiveWorkbook.Path
+doklej = tws.Range("A7:A19")
+tempid = tws.Cells(3, 2)
+inputfile = Application.GetOpenFilename(Title:="Wybierz Excelowy plik wsadowy")
+
+Set owb = Workbooks.Open(inputfile)
+Set os = owb.Sheets(1)
+
+'Count = os.UsedRange.Rows(os.UsedRange.Rows.Count).Row
+'Count = os.Range("A1").CurrentRegion.Rows.Count
+'Count = os.Cells.SpecialCells(xlCellTypeLastCell).Row
+'Count = os.AutoFilter.Range.Columns(1).SpecialCells(xlCellTypeVisible).Cells.Count - 1
+Count = os.Cells(os.Rows.Count, "A").End(xlUp).Row
+
+os.Columns("B:Q").Copy _
+    Destination:=osnd.Cells(1, 1)
+osnd.Columns("D:D").Replace What:=";", Replacement:=" ", LookAt:=xlPart
+osnd.Columns("D:D").Replace What:="" & Chr(10) & "", Replacement:="", LookAt:=xlPart
+Count = osnd.Cells(osnd.Rows.Count, "A").End(xlUp).Row
+
+'For Each MyRange In osnd.Range("E2:E" & Count)
+'    If 0 < InStr(MyRange, Chr(10)) Then
+'        MyRange = Replace(MyRange, Chr(10), "")
+'    End If
+'Next
+
+
+owb.Close False
+
+between = ";"
+pusty = "<E>;"
+polskie = "POLSKIE"
+Count = osnd.Cells(osnd.Rows.Count, "A").End(xlUp).Row
+osnd.Columns("A:A").Insert Shift:=xlToRight
+
+h = 1
+For s = 2 To Count
+    If osnd.Cells(s, 2) = "AGO" Then
+    
+        tws.Cells(3, 2) = osnd.Cells(s, 4)
+        nazwa1 = tws.Cells(4, 2)
+        nazwa2 = tws.Cells(5, 2)
+        agent = osnd.Cells(s, 5)
+        nr_ZU = osnd.Cells(s, 4)
+        nr_RA = osnd.Cells(s, 3)
+        forma_pr = osnd.Cells(s, 9)
+        nip = osnd.Cells(s, 7)
+        typRej = osnd.Cells(s, 6)
+        nr_ew = osnd.Cells(s, 8)
+        r_dok = osnd.Cells(s, 11)
+        obyw = "POLSKIE"
+        pesel = osnd.Cells(s, 12)
+        dzialal = "0"
+        zarza = "0"
+    
+        temp = nazwa2 & agent & ";" & nr_ZU & ";" & nr_RA & ";" & forma_pr & ";" & _
+            typRej & ";" & nip & ";<E>;<E>;<E>;<E>;<E>;<E>;" & dzialal & ";<E>;<E>;" & _
+            nr_ew & ";<E>;<E>;<E>;<E>;" & obyw & ";" & r_dok & ";" & pesel & _
+            ";<E>;<E>;<E>;<E>;<E>;<E>;<E>;" & dzialal & ";<E>;<E>;<E>;"
+    
+        osnd.Cells(s, 1) = temp
+        osnw.Cells(h, 1) = nazwa1
+        osnw.Cells(h + 1, 1) = temp
+        
+        For j = 1 To 13
+            With osnw.Cells(h + 1 + j, 1)
+                .Value = tws.Cells(6 + j, 1)
+            End With
+        Next j
+        h = h + 15
+    Else
+    End If
+    
+Next s
+
+'With osnd.Columns("A:A")
+'    .HorizontalAlignment = xlGeneral
+'    .VerticalAlignment = xlBottom
+'    .WrapText = False
+'    .Orientation = 0
+'    .AddIndent = False
+'    .IndentLevel = 0
+'    .ShrinkToFit = False
+'    .ReadingOrder = xlContext
+'    .MergeCells = False
+'End With
+
+
+FileName = twpath & "\" & "Wnioski wyniki.cia"
+FN = FreeFile
+
+Open FileName For Output As #FN
+Count = osnw.Cells(osnw.Rows.Count, "A").End(xlUp).Row
+Set MyRange = osnw.Range("A1:A" & Count)
+For Each cell In MyRange.Cells
+    strTemp = Replace(cell.Value, Chr(10), vbCrLf)
+    objData.SetText (strTemp)
+    Print #FN, strTemp
+Next
+
+Close #FN
+
+
+Application.ScreenUpdating = True
+Application.DisplayAlerts = True
+Application.CutCopyMode = True
+
+MsgBox "Wykonano"
+
+End Sub
