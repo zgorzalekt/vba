@@ -1,0 +1,20 @@
+import os
+import pandas as pd
+import csv
+
+enc = 'iso-8859-15'
+path = """XXX"""
+
+for file in os.listdir(path):
+    print(file)
+    old = path + file
+    fd = open(old , 'r', encoding = enc)
+    data = fd.read()
+    key = data[63:63+19]
+    new = path + key + ".XXX"
+    fd.close()
+    try:
+        os.rename(old, new)
+    except FileExistsError:
+        new = new + '1'
+        os.rename(old, new)
