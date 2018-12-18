@@ -1,0 +1,25 @@
+from PyPDF2 import PdfFileReader, PdfFileWriter
+import openpyxl
+from openpyxl import Workbook
+from openpyxl import load_workbook
+
+wb = load_workbook('nazwy.xlsx')
+ws = wb.worksheets[0]
+row_count = ws.max_row
+print(row_count)
+pdf_file = open('operationHistoryForm_13122018_080213 KNF V.pdf','rb')
+pdf_reader = PdfFileReader(pdf_file)
+pageNumbers = pdf_reader.getNumPages()
+print(pageNumbers)
+if row_count == pageNumbers:
+    for i in range (pageNumbers):
+        print(i)
+        pdf_writer = PdfFileWriter()
+        pdf_writer.addPage(pdf_reader.getPage(i))
+        name = ws.cell( i+1 , 1).value
+        print(name)
+        split_motive = open(str(name) + '.pdf','wb')
+        pdf_writer.write(split_motive)
+        split_motive.close()
+
+pdf_file.close()
