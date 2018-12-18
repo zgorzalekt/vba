@@ -1,0 +1,212 @@
+from bs4 import BeautifulSoup
+import requests
+import html2text
+import re
+import urllib3
+import os
+import win32com.client as win32
+import datetime
+
+urllib3.disable_warnings()
+
+#enc = 'iso-8859-15' 
+#enc = 'cp1250'
+enc = 'utf-8'
+#enc = 'ISO-8859-2'
+#enc = 'cp852'
+
+def cleanhtml(raw_html):
+    raw_html = str(raw_html)
+    raw_html = str.strip(raw_html)
+    cleanr = re.compile('<.*?>')
+    cleantext = re.sub(cleanr, '', raw_html)
+    return cleantext
+
+def substring_after(s, delim):
+    return s.partition(delim)[2]
+
+e60 = 'https://www.olx.pl/motoryzacja/samochody/bmw/seria-5/?search%5Bfilter_float_year%3Afrom%5D=2004&search%5Bfilter_enum_petrol%5D%5B0%5D=petrol&search%5Bfilter_float_enginepower%3Afrom%5D=231&search%5Bfilter_float_enginepower%3Ato%5D=231&search%5Bfilter_float_milage%3Ato%5D=230000&search%5Bfilter_enum_condition%5D%5B0%5D=notdamaged&search%5Bfilter_enum_transmission%5D%5B0%5D=automatic'
+
+giul = 'https://www.olx.pl/motoryzacja/samochody/alfa-romeo/giulietta/?search%5Bfilter_float_price%3Ato%5D=37000&search%5Bfilter_float_year%3Afrom%5D=2008&search%5Bfilter_enum_petrol%5D%5B0%5D=petrol&search%5Bfilter_float_enginepower%3Ato%5D=170&search%5Bfilter_float_enginepower%3Afrom%5D=170&search%5Bfilter_float_milage%3Ato%5D=130000&search%5Bfilter_enum_condition%5D%5B0%5D=notdamaged&search%5Bfilter_enum_transmission%5D%5B0%5D=manual'
+
+laga = 'https://www.olx.pl/motoryzacja/samochody/renault/laguna/?search%5Bfilter_float_year%3Afrom%5D=2008&search%5Bfilter_enum_petrol%5D%5B0%5D=petrol&search%5Bfilter_float_enginepower%3Afrom%5D=170&search%5Bfilter_float_milage%3Ato%5D=130000&search%5Bfilter_enum_car_body%5D%5B0%5D=estate-car&search%5Bfilter_enum_condition%5D%5B0%5D=notdamaged&search%5Bfilter_enum_country_origin%5D%5B0%5D=pl&search%5Bfilter_enum_country_origin%5D%5B1%5D=d'
+
+insi = 'https://www.olx.pl/motoryzacja/samochody/opel/insignia/?search%5Bfilter_float_price%3Ato%5D=37000&search%5Bfilter_enum_petrol%5D%5B0%5D=petrol&search%5Bfilter_float_enginepower%3Afrom%5D=180&search%5Bfilter_float_enginepower%3Ato%5D=180&search%5Bfilter_float_milage%3Ato%5D=130000&search%5Bfilter_enum_car_body%5D%5B0%5D=estate-car&search%5Bfilter_enum_condition%5D%5B0%5D=notdamaged'
+
+astr = 'https://www.olx.pl/motoryzacja/samochody/opel/astra/?search%5Bfilter_float_price%3Ato%5D=37000&search%5Bfilter_float_year%3Afrom%5D=2009&search%5Bfilter_enum_petrol%5D%5B0%5D=petrol&search%5Bfilter_float_enginepower%3Afrom%5D=180&search%5Bfilter_float_enginepower%3Ato%5D=180&search%5Bfilter_float_milage%3Ato%5D=110000&search%5Bfilter_enum_condition%5D%5B0%5D=notdamaged&search%5Bfilter_enum_country_origin%5D%5B0%5D=pl&search%5Bfilter_enum_country_origin%5D%5B1%5D=d'
+
+aven = 'https://www.olx.pl/motoryzacja/samochody/toyota/avensis/?search%5Bfilter_float_price%3Ato%5D=37000&search%5Bfilter_float_year%3Afrom%5D=2008&search%5Bfilter_enum_petrol%5D%5B0%5D=petrol&search%5Bfilter_float_enginepower%3Afrom%5D=150&search%5Bfilter_float_enginepower%3Ato%5D=250&search%5Bfilter_float_milage%3Ato%5D=160000&search%5Bfilter_enum_car_body%5D%5B0%5D=estate-car&search%5Bfilter_enum_condition%5D%5B0%5D=notdamaged&search%5Bfilter_enum_country_origin%5D%5B0%5D=pl&search%5Bfilter_enum_country_origin%5D%5B1%5D=d'
+
+acc = 'https://www.olx.pl/motoryzacja/samochody/honda/accord/?search%5Bfilter_float_price%3Ato%5D=38000&search%5Bfilter_float_year%3Afrom%5D=2009&search%5Bfilter_enum_petrol%5D%5B0%5D=petrol&search%5Bfilter_float_enginepower%3Afrom%5D=140&search%5Bfilter_float_enginepower%3Ato%5D=250&search%5Bfilter_float_milage%3Ato%5D=160000&search%5Bfilter_enum_car_body%5D%5B0%5D=estate-car&search%5Bfilter_enum_condition%5D%5B0%5D=notdamaged&search%5Bfilter_enum_country_origin%5D%5B0%5D=pl&search%5Bfilter_enum_country_origin%5D%5B1%5D=d'
+
+saab = 'https://www.olx.pl/motoryzacja/samochody/saab/9-3/?search%5Bfilter_float_price%3Ato%5D=37000&search%5Bfilter_float_year%3Afrom%5D=2008&search%5Bfilter_enum_petrol%5D%5B0%5D=petrol&search%5Bfilter_float_enginepower%3Afrom%5D=160&search%5Bfilter_float_milage%3Ato%5D=160000&search%5Bfilter_enum_condition%5D%5B0%5D=notdamaged&search%5Bfilter_enum_transmission%5D%5B0%5D=manual'
+
+exeo = 'https://www.olx.pl/motoryzacja/samochody/seat/exeo/?search%5Bfilter_float_price%3Ato%5D=37000&search%5Bfilter_float_year%3Afrom%5D=2008&search%5Bfilter_enum_petrol%5D%5B0%5D=petrol&search%5Bfilter_float_enginepower%3Afrom%5D=150&search%5Bfilter_float_enginepower%3Ato%5D=150&search%5Bfilter_float_milage%3Ato%5D=160000&search%5Bfilter_enum_car_body%5D%5B0%5D=estate-car&search%5Bfilter_enum_condition%5D%5B0%5D=notdamaged&search%5Bfilter_enum_country_origin%5D%5B0%5D=pl&search%5Bfilter_enum_country_origin%5D%5B1%5D=d'
+
+lega = 'https://www.olx.pl/motoryzacja/samochody/subaru/legacy/?search%5Bfilter_float_year%3Afrom%5D=2009&search%5Bfilter_enum_petrol%5D%5B0%5D=petrol&search%5Bfilter_float_milage%3Afrom%5D=150000&search%5Bfilter_enum_car_body%5D%5B0%5D=estate-car&search%5Bfilter_enum_condition%5D%5B0%5D=notdamaged'
+
+
+pols = 'https://www.olx.pl/motoryzacja/samochody/?search%5Bfilter_float_price%3Ato%5D=37000&search%5Bfilter_float_price%3Afrom%5D=25000&search%5Bfilter_float_year%3Afrom%5D=2008&search%5Bfilter_float_enginesize%3Afrom%5D=1555&search%5Bfilter_float_enginesize%3Ato%5D=2500&search%5Bfilter_enum_petrol%5D%5B0%5D=petrol&search%5Bfilter_float_enginepower%3Afrom%5D=150&search%5Bfilter_float_milage%3Ato%5D=130000&search%5Bfilter_float_milage%3Afrom%5D=75000&search%5Bfilter_enum_car_body%5D%5B0%5D=sedan&search%5Bfilter_enum_car_body%5D%5B1%5D=hatchback&search%5Bfilter_enum_car_body%5D%5B2%5D=estate-car&search%5Bfilter_enum_car_body%5D%5B3%5D=suv&search%5Bfilter_enum_condition%5D%5B0%5D=notdamaged&search%5Bfilter_enum_country_origin%5D%5B0%5D=pl&search%5Border%5D=created_at%3Adesc'
+
+kiedy = datetime.datetime.now()
+kiedy = kiedy.strftime("%Y-%m-%d")
+
+file = 'wyniki_' + str(kiedy) + '.txt'
+file = open(file , 'w+' , encoding = enc)
+#linki = [ laga , lega , e60  , aven , acc , saab , exeo , insi , astr , giul ]
+linki = [ pols ]
+link_no = len(linki)
+
+for no , link in enumerate( linki , 1):
+    sauce = requests.get(link , verify=False)
+    soup = BeautifulSoup(sauce.content,'html.parser')
+    all = str(soup.get_text)
+    all = all[:5000]
+    look = """page_count":"""
+    strony = all.find(look)
+    strony = all[:strony]
+
+    #print(strony)
+    oferty = soup.find_all("td", class_="offer ") #metoda dziala
+    #oferty = soup.find_all(attrs={"class": "offer "}) #metoda dziala
+    #oferty = soup.find_all(class_=re.compile("offer ")) #metoda dziala
+
+    hsh = '##############################################################################################'
+    for i in range(2):
+        file.write(hsh + '\n')
+    for i in range(2):
+        print(hsh)
+
+    tit = soup.title
+    print(tit.contents)
+    file.write(str(tit.contents) + '\n')
+    file.write('Znaleziono: ' + str(len(oferty)) + '\n')
+    print('Znaleziono:' , len(oferty))
+
+    for i in range(2):
+        file.write(hsh + '\n')
+    for i in range(2):
+        print(hsh)
+        
+
+    for i , element in enumerate(oferty):
+        tytulA = element.find("a", class_="marginright5 link linkWithHash detailsLink")
+        tytulB = tytulA.find('strong')
+
+        tytulC = str(no) + '/' + str(link_no) + '|--|' + str(i+1)+ '/' + str(len(oferty)) + '. '  + cleanhtml(str(tytulB))
+        tytlen = len(tytulC)
+        linkA = tytulA.get("href")
+        linkAp = linkA.find('.html') + 5
+        linkB = linkA[:linkAp]
+        cenaA = element.find("p", class_="price")
+        cenaB = cenaA.find('strong')
+        cenaC = cleanhtml(str(cenaB))
+
+        lokalA = element.find("td", class_="bottom-cell")
+        lokalB = list(lokalA.children)[1]
+        lokalC = lokalB.find('span')
+        lokalD = list(lokalC.children)[2]
+        lokalE = str.strip(lokalD)
+
+        czasA = list(lokalB.children)[1]
+        czasB = list(czasA.children)[3]
+        czasC = str.strip(cleanhtml(str(czasB)))
+
+        print('=' * tytlen)
+        print(tytulC)
+        print('=' * tytlen)
+
+        file.write('=' * tytlen + '\n')
+        file.write(tytulC + '\n')
+        file.write('=' * tytlen + '\n')
+
+        print('| Dodano: ' + czasC)
+        file.write('| Dodano: ' + czasC + '\n')
+
+        print('| Cena: ' + cenaC)
+        file.write('| Cena: ' + cenaC + '\n')
+        
+        print('| Lokalizacja: ' + lokalE)
+        file.write('| Lokalizacja: ' + lokalE + '\n')
+
+        print('| Link: ' + linkB)
+        file.write('| Link: ' + linkB + '\n')
+
+        a = linkB[:15]
+        a = a[-3:]
+        if a == 'oto':
+            sauce = requests.get(linkB , verify=False)
+            soup = BeautifulSoup(sauce.content,'html.parser')
+            data2 = soup.find('meta' , property="og:updated_time" )
+            data2 = data2["content"]
+            data2 = str(data2)
+            data2 = data2[:10]
+
+            print('| Data dodania: ' + data2)
+            file.write('| Data dodania: ' + data2 + '\n')
+
+            szczeg = {}
+            detale = soup.find_all('li' , class_="offer-params__item" )
+           
+            for detal in detale:
+                label = detal.find('a' , class_="offer-params__label")
+                if str(label) == "None":
+                    label = detal.find('span' , class_="offer-params__label" )
+
+                label = label.get_text()
+                label = str.strip(label)
+                value = detal.find('div' , class_="offer-params__value" )
+                value = value.get_text()
+                value = str.strip(value)
+
+                print('\  ' + label + ': ' + value)
+                szczeg[label] = value
+                file.write('\  ' + label + ': ' + value + '\n')
+
+            detale = cleanhtml(detale)
+            detale = str.strip(detale)
+            print()
+            file.write('\n')
+            opis = soup.find('div' , 'offer-description')
+            opis = str.strip(cleanhtml(opis))
+            file.write(opis + '\n')
+            file.write('\n')
+            opis = opis.splitlines()
+            for line in opis:
+                try:
+                    line = line.strip()
+                    print(line)
+                except UnicodeEncodeError:
+                    print(line.encode(encoding= enc,errors='strict'))
+
+            print()
+
+        else:
+            sauce = requests.get(linkB , verify=False)
+            soup = BeautifulSoup(sauce.content,'html.parser')
+
+            opis = soup.find('p', class_='clr lheight20 large')
+            opis = cleanhtml(str(opis))
+            opis = str.strip(opis)
+            print(opis)
+            file.write(opis)
+            file.write('\n')
+
+        breaklin = '-------------------------------------------------------------------------------------'
+        file.write(breaklin + '\n')
+#file.close() 
+
+#file = open('wyniki_' + str(kiedy) + '.txt' , 'r' , encoding = enc)
+body = file.read()
+outlook = win32.Dispatch('outlook.application')
+mail = outlook.CreateItem(0)
+mail.To = 'zgorzalekt@hotmail.com'
+mail.Subject = 'auto_wyniki ' + kiedy
+mail.Body = body
+#mail.HTMLBody = '<h2>HTML Message body</h2>'
+   
+##att  = "Pth to att"
+##mail.Attachments.Add(att)
+mail.Send()
+file.close() 
+print("wykonano")
