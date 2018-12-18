@@ -1,0 +1,113 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+import time
+import openpyxl
+from openpyxl import Workbook
+from openpyxl import load_workbook
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import NoSuchElementException  
+      
+def check_exists_by_id(id):
+    try:
+        driver.find_element_by_id(id)
+    except NoSuchElementException:
+        return False
+    return True
+
+print("module load ok")
+filepath="""XXX"""
+wb = load_workbook(filepath)
+print("excel file load ok")
+kontaktowe = wb.worksheets[0]
+komorkowe = wb.worksheets[1]
+print("excel sheets load ok")
+row_count = kontaktowe.max_row
+column_count = kontaktowe.max_column
+print("sheet1 max col row load ok: col: " , column_count , " row: " , row_count )
+rng = range(2 , row_count)
+
+driver = webdriver.Firefox()
+driver.get("XXX")
+
+username = driver.find_element_by_id("j_id70:Login_login_inputText")
+password = driver.find_element_by_id("Login_password_id:Login_password_id_inputText")
+
+username.send_keys("XXX")
+password.send_keys("XXX")
+driver.find_element_by_id("j_id85:submit").click()
+time.sleep(1)
+driver.get("XXX")
+driver.get("XXX")
+time.sleep(1)
+print("connected")
+
+#for i in rng:
+i = 2
+while i > 1 and i <= row_count:
+  print("loop start")
+  driver.get("XXX")
+  time.sleep(1)
+  driver.get("XXX")
+  oso_pm = kontaktowe.cell( i , 7).value
+  oso_srnme = kontaktowe.cell( i , 5).value
+
+  time.sleep(1)
+  print("find connected")
+  if check_exists_by_id("baseForm:j_id115:j_id129:model_personFilter_surname_inputText") == True:
+      time.sleep(1)
+      driver.find_element_by_xpath("//div[@id='baseForm:j_id145:model_personFilter_filter_panel_header']/span").click()
+      print("expand search")
+      find_id = driver.find_element_by_id("baseForm:j_id145:j_id162:model_personFilter_clientNumber_inputText")
+      find_id.send_keys(oso_pm)
+      find_srnme = driver.find_element_by_id("baseForm:j_id115:j_id129:model_personFilter_surname_inputText")
+      find_srnme.send_keys(oso_srnme)
+      print("search input ok")
+      driver.find_element_by_id("baseForm:j_id274:j_id276").click()
+      print("search run")
+
+      try:
+        myElem = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.LINK_TEXT, "Podgląd")))
+        driver.find_element_by_xpath("//div[@id='baseForm:j_id145:model_personFilter_filter_panel_header']/span").click()
+        print("found")
+        driver.find_element_by_id("baseForm:legalEntitySearchResultsTableTbl:0:j_id522").click()
+        driver.find_element_by_id("baseForm:legalEntitySearchResultsTableTbl:0:j_id590").click()
+        print("go further")
+        try:
+          myElem =WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, "model_person_form:j_id110_lbl") or (By.XPATH, "//div[@id='model_person_form:j_id111:j_id218:model_person_panelId_header']/span")))
+          print ("data found")
+
+          if check_exists_by_id("model_person_form:j_id111:j_id218:model_person_panelId_content_DIV") == True:
+            find_txt = driver.find_element_by_id("model_person_form:j_id111:j_id218:model_person_panelId_content_DIV").text
+            print(find_txt)
+          else:
+            find_txt = driver.find_element_by_id("model_person_form:j_id111:j_id220:model_person_panelId_content_DIV").text
+            print(find_txt)
+
+
+          i = i + 1
+          
+        except TimeoutException:
+          print ("beng!")
+          i = i + 1
+          
+      except TimeoutException:
+        print ("beng!")
+        i = i + 1
+
+
+  else:
+      print("beng! timeout logoff")
+      driver.get("XXX")
+      username.send_keys("XXX")
+      password.send_keys('XXX')
+      driver.find_element_by_id("j_id85:submit").click()
+      time.sleep(1)
+      print("relog ok")
+      driver.get("XXX")
+      time.sleep(1)
+      i = i
+print('myk')
