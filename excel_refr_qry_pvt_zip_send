@@ -1,0 +1,93 @@
+Sub smsy()
+
+Application.DisplayAlerts = False
+Application.ScreenUpdating = False
+
+
+str7ZipPath = "XXX"
+Set wb = ThisWorkbook
+Set sms_book1 = wb.Sheets("XXX")
+Set sms_book2 = wb.Sheets("XXX")
+Set sms_windyk1 = wb.Sheets("XXX")
+Set sms_windyk2 = wb.Sheets("XXX")
+
+Set tbl_book1 = sms_book1.ListObjects("XXX")
+Set tbl_book2 = sms_book2.ListObjects("XXX")
+Set tbl_windyk1 = sms_windyk1.ListObjects("XXX")
+Set tbl_windyk2 = sms_windyk2.ListObjects("XXX")
+    
+    For Each objConnection In wb.Connections
+        bBackground = objConnection.OLEDBConnection.BackgroundQuery
+        objConnection.OLEDBConnection.BackgroundQuery = False
+        objConnection.Refresh
+        objConnection.OLEDBConnection.BackgroundQuery = bBackground
+    Next
+
+For i = 1 To 4
+    Namee = Choose(i, "XXX", "XXX", "XXX", "XXX")
+    tablic = Choose(i, tbl_book1, tbl_book2, tbl_windyk1, tbl_windyk2)
+    sht = Choose(i, "XXX", "XXX", "XXX", "XXX")
+    Set wb_add_1 = Workbooks.Add
+    wb_add_1.Sheets(1).Name = Namee
+
+    If i < 3 Then
+        Path = "XXX"
+        out = "XXX"
+        arch = "XXX"
+    Else
+        Path = "XXX"
+        out = "XXX"
+        arch = "XXX"
+    End If
+
+    srcfile = Path & Namee & Date & ".xlsx"
+
+    wb.Sheets(sht).ListObjects(tablic).Range.Copy Destination:=wb_add_1.Sheets(1).Range("A1")
+    wb_add_1.Sheets(1).Cells.ClearFormats
+    wb_add_1.SaveAs Filename:=srcfile, FileFormat:=51 _
+    , Password:="", WriteResPassword:="", ReadOnlyRecommended:=False _
+     , CreateBackup:=False
+    wb_add_1.Close
+
+    outzipfile = Path & out & Date & ".zip"
+    strPassword = "XXXXXXXXX"
+
+    strCommand = str7ZipPath & " -p" & strPassword & " a -tzip """ & outzipfile & """ """ & srcfile & """"
+    Shell strCommand
+        
+    If sht = "SMS_book_arch" Then
+        Set arr = Workbooks.Open(Path & arch)
+        Set arws = arr.Sheets("Detal")
+        lastR = arws.UsedRange.Rows(arws.UsedRange.Rows.Count).Row
+'        MsgBox lastR
+        wb.Sheets(sht).ListObjects(tablic).DataBodyRange.Copy Destination:=arws.Cells(lastR + 1, 1)
+        For Each Sheet In arr.Worksheets
+            For Each Pivot In Sheet.PivotTables
+                Pivot.RefreshTable
+                Pivot.Update
+            Next
+        Next
+        arr.Save
+        arr.Close
+    ElseIf sht = "XXX" Then
+        Set arr = Workbooks.Open(Path & arch)
+        Set arws = arr.Sheets("XXX")
+        lastR = arws.UsedRange.Rows(arws.UsedRange.Rows.Count).Row
+        wb.Sheets(sht).ListObjects(tablic).DataBodyRange.Copy Destination:=arws.Cells(lastR + 1, 1)
+        For Each Sheet In arr.Worksheets
+            For Each Pivot In Sheet.PivotTables
+                Pivot.RefreshTable
+                Pivot.Update
+            Next
+        Next
+        arr.Save
+        arr.Close
+    Else
+    End If
+Next i
+
+Application.DisplayAlerts = True
+Application.ScreenUpdating = True
+MsgBox "weszło. pliki zrzucone do własćiwych folderów"
+    
+End Sub
