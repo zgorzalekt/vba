@@ -1,0 +1,165 @@
+Function IFError(Formula As Variant, Show As String)
+On Error GoTo ErrorHandler
+If IsError(Formula) Then
+    IFError = Show
+Else
+    IFError = Formula
+End If
+
+Exit Function
+
+ErrorHandler:
+Resume Next
+
+End Function
+
+Sub raport_aebpm()
+
+Application.DisplayAlerts = True
+Application.ScreenUpdating = True
+Application.AskToUpdateLinks = True
+Application.DisplayAlerts = False
+Application.ScreenUpdating = False
+Application.AskToUpdateLinks = False
+Application.EnableEvents = True
+Dim rng As Object
+
+Set wb1 = ThisWorkbook
+Set ws1 = wb1.Sheets(1)
+
+Location = "XXX.xlsx"
+src_file = Location & "\" & Source
+
+If Format(FileDateTime(src_file), "dd.mm.yyyy") <> Format(Date, "dd.mm.yyyy") Then
+    If MsgBox("Stary plik źródłowy (" & Format(FileDateTime(src_file), "dd.mm.yyyy") & _
+        "). Kontynuować?", vbYesNo + vbQuestion, "Data pliku") = vbNo Then
+        Exit Sub
+    Else
+    End If
+Else
+End If
+
+ws1.Range("D:K").Delete
+
+Set swb = Workbooks.Open(src_file)
+Set ae = swb.Sheets(1)
+Set bpm = swb.Sheets(2)
+
+
+lastR = ae.Cells(ae.Rows.Count, "A").End(xlUp).Row
+ae.Columns("A:A").Insert Shift:=xlToRight, CopyOrigin:=xlFormatFromLeftOrAbove
+ae.Cells(1, 1) = "Sprawa BMP"
+
+Do While lastR > 1
+    With ae.Cells(lastR, 1)
+        .Value = IFError(Application.VLookup(ae.Cells(lastR, 2), bpm.Range("A:B"), 2, 0), "brak")
+        .Value = .Value
+    End With
+    If ae.Cells(lastR, 1) = "brak" Then
+        ae.Cells(lastR, 1).EntireRow.Delete
+    Else
+    End If
+    
+lastR = lastR - 1
+Loop
+
+lastR = ae.Cells(ae.Rows.Count, "A").End(xlUp).Row
+ae.Range(ae.Cells(1, 1), ae.Cells(lastR, 6)).RemoveDuplicates Columns:=1, Header:=xlYes
+lastR = ae.Cells(ae.Rows.Count, "A").End(xlUp).Row
+ae.Range(ae.Cells(1, 1), ae.Cells(lastR, 6)).Copy _
+    Destination:=ws1.Cells(1, 5)
+
+
+swb.Close False
+
+Set nwb = Workbooks.Add
+Set nws = nwb.Sheets(1)
+nws.Name = "Wyniki"
+
+ws1.Range(ws1.Cells(1, 5), ws1.Cells(lastR, 10)).Copy
+nws.Range("A1").PasteSpecial xlValues
+
+nws.Columns("A:E").AutoFit
+nws.Columns("F:F").NumberFormat = "dd/mm/yyyy hh:mm:ss"
+
+att = Location & "\XXX " & Date & ".xlsx"
+nws.SaveAs (att)
+nwb.Close
+ws1.Cells(2, 2) = Date
+wb1.Save
+
+Application.DisplayAlerts = True
+Application.ScreenUpdating = True
+Application.AskToUpdateLinks = True
+
+'MsgBox ("Wykonano, plik zrzucony")
+
+End Sub
+
+#################################################################
+#################################################################
+#################################################################
+#################################################################
+#################################################################
+
+Sub wyslij_email()
+
+Application.DisplayAlerts = False
+Application.ScreenUpdating = False
+
+Set wb = ThisWorkbook
+Location = "XXX"
+Set ws = wb.Sheets(1)
+
+att = Location & "\XXX " & Date & ".xlsx"
+
+If Dir(att) = "" Then
+    MsgBox ("Brak pliku. Nie robie.")
+    Exit Sub
+Else
+
+mTo = ws.Cells(8, 1)
+mCc = ws.Cells(10, 1)
+mBcc = Cells(12, 1)
+mSbj = Cells(14, 1)
+mHead = Cells(16, 1)
+mBody = Cells(18, 1)
+mLegs = Cells(20, 1)
+
+For i = 1 To 3
+    Line = Choose(i, 8, 14, 18)
+    If ws.Cells(Line, 1) = "" Then
+        MsgBox ("Brak kluczowych danych emaila")
+        Exit Sub
+    Else
+    End If
+Next i
+
+    If Format(FileDateTime(att), "dd.mm.yyyy") <> Format(Date, "dd.mm.yyyy") Then
+        If MsgBox("Plik nie ma dzisiejszej daty. Kontynuować?", vbYesNo + vbQuestion, "Data pliku") = vbNo Then
+            Exit Sub
+        Else
+        End If
+    Else
+        Set mail_obj = CreateObject("Outlook.Application")
+        Set mail = mail_obj.createitem(0)
+            
+            mail.To = mTo
+            mail.cc = mCc
+            mail.bcc = mBcc
+            mail.Subject = mSbj
+            mail.attachments.Add (att)
+            mail.display
+            mail.htmlbody = mHead & "<BR><BR>" & mBody & "<BR><BR>" & mLegs
+            mail.send
+        
+    End If
+End If
+
+wb.Save
+
+Application.DisplayAlerts = True
+Application.ScreenUpdating = True
+'MsgBox ("Wysłano")
+
+End Sub
