@@ -1,0 +1,87 @@
+Private Sub Workbook_BeforeSave(ByVal SaveAsUI As Boolean, _
+        Cancel As Boolean)
+'Path = Application.ThisWorkbook.Path
+'    Path = "\\10.0.1.59\departaments\BOOK\BOOK_wymiana\Call Center\GRAFIK_SYSTEM_RÓWNOWAŻNY\"
+    Dim dblqt As String
+    dblqt = Chr(34)
+    Dim d As Integer
+    Dim tbl As ListObject
+    Dim ws As Worksheet
+
+    Set wb = ThisWorkbook
+    Set emp = wb.Sheets("XXX")
+    Set fpan = wb.Sheets("XXX")
+    Set bpan = wb.Sheets("XXX")
+    Set EmpZOS = emp.ListObjects("XXX")
+    empZOStblrng = EmpZOS.Range.Address(False, False)
+    pplsupplyZOS = EmpZOS.DataBodyRange.Rows.Count
+    Set progZos = bpan.ListObjects("XXX")
+    progZosrng = progZos.Range.Address(False, False)
+    Set progZosideal = bpan.ListObjects("XXX")
+    progZosrngideal = progZosideal.Range.Address(False, False)
+    Set EmpZIU = emp.ListObjects("XXX")
+    empZIUtblrng = EmpZIU.Range.Address(False, False)
+    pplsupplyZIU = EmpZIU.DataBodyRange.Rows.Count
+    Set progZiu = bpan.ListObjects("XXX")
+    progZiurng = progZiu.Range.Address(False, False)
+    Set progZiuideal = bpan.ListObjects("XXX")
+    progZiurngideal = progZiuideal.Range.Address(False, False)
+    Set progideal = fpan.ListObjects("XXX")
+    progtblrngideal = progideal.Range.Address(False, False)
+    Set prog = fpan.ListObjects("XXX")
+    progtblrng = prog.Range.Address(False, False)
+    pplSupply = pplsupplyZOS + pplsupplyZIU
+    emp.ListObjects("XXX").Sort.SortFields.Clear
+
+    On Error GoTo wraziebledu
+
+    wysokosc = 8
+    szerokosc = 15
+    empCol = 5
+    Vsum = 10
+    wysokosc2 = wysokosc + pplsupplyZOS + 1 + 5
+
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+'    fname = MonthName(Month(Date) + 1) & " " & Year(Date)
+    FName = wb.Sheets(Sheets.Count).Name
+
+
+    If wb.ActiveSheet.Name = "XXX" _
+        Or wb.ActiveSheet.Name = "XXX" _
+        Or wb.ActiveSheet.Name = "XXX" Then
+        FName = wb.Sheets(Sheets.Count).Name
+    Else
+        FName = wb.ActiveSheet.Name
+    End If
+
+    wb.Sheets(FName).Copy
+    ActiveWorkbook.Sheets(1).Rows(wysokosc + pplsupplyZOS + 5).Delete
+    ActiveWorkbook.Sheets(1).Rows(wysokosc + pplsupplyZOS + 4).Delete
+    ActiveWorkbook.Sheets(1).Rows(wysokosc + pplsupplyZOS + 3).Delete
+    ActiveWorkbook.Sheets(1).Rows(wysokosc + pplsupplyZOS + 2).Delete
+
+    ActiveWorkbook.Sheets(1).Rows("2:7").Delete
+    ActiveWorkbook.Sheets(1).Cells.Copy
+    ActiveWorkbook.Sheets(1).Range("A1").PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+            :=False, Transpose:=False
+
+    ActiveWorkbook.Close SaveChanges:=True, fileName:= _
+            Path & "XXX" & FName & "XXX"
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
+
+    MsgBox ("Plik zrzucono do: " & Path)
+    'Cancel = False
+    GoTo wyjdz
+wraziebledu:    MsgBox ("Zapis/nadpisanie niemozliwe, plik docelowy zablokowany" _
+                & ". Utworzono plik pomocniczy.")
+                    ActiveWorkbook.Close SaveChanges:=True, fileName:= _
+                        Path & "XXX " & FName & " ekstrakt pomocniczy.xlsx"
+                Resume wyjdz
+wyjdz:
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
+    Exit Sub
+
+End Sub
