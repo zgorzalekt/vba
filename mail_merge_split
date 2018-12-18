@@ -1,0 +1,21 @@
+Sub BreakOnSection()
+    
+Application.Browser.Target = wdBrowseSection
+    
+    For i = 1 To ((ActiveDocument.Sections.Count) - 1)
+
+        ActiveDocument.Bookmarks("\Section").Range.Copy
+        Documents.Add
+        Selection.Paste
+        Selection.MoveUp Unit:=wdLine, Count:=1, Extend:=wdExtend
+        loca = "C:\Users\tzgorzalek\Desktop\zsyp\"
+        DocNum = DocNum + 1
+        ActiveDocument.ExportAsFixedFormat _
+        OutputFileName:=loca & "test_" & DocNum & ".pdf", _
+        ExportFormat:=wdExportFormatPDF
+        ActiveDocument.Close False
+        Application.Browser.Next
+    
+    Next i
+
+End Sub
