@@ -1,0 +1,951 @@
+Sub after_work_start()
+'
+Application.ScreenUpdating = False
+Application.DisplayAlerts = False
+
+Dim dblqt As String
+dblqt = Chr(34)
+Dim d As Integer
+Dim tbl As ListObject
+Dim ws As Worksheet
+
+Set wb = ThisWorkbook
+Set emp = wb.Sheets("Pracownicy2")
+Set fpan = wb.Sheets("Sterowanie")
+Set bpan = wb.Sheets("B_Panel")
+Set raw = wb.Sheets("RAW")
+dlast = Day(DateSerial(Year(Date), Month(Date) + 2, 0)) '' wstawic przyp grudniowy!!!!!!!!!!!!
+
+Dim Starttime As Single
+
+Starttime = Timer
+'ActiveWorkbook.RefreshAll
+
+'raw.ListObject.QueryTable.Refresh BackgroundQuery:=False
+'wb.Sheets("RAW").Visible = True
+'wb.Sheets("B_Panel").Visible = True
+'
+'raw.Range("m1").Select
+'Selection.ListObject.QueryTable.Refresh BackgroundQuery:=False
+'
+'    For Each objConnection In wb.Connections
+'        'Get current background-refresh value
+'        bBackground = objConnection.OLEDBConnection.BackgroundQuery
+'
+'        'Temporarily disable background-refresh
+'        objConnection.OLEDBConnection.BackgroundQuery = False
+'
+'        'Refresh this connection
+'        objConnection.Refresh
+'
+'        'Set background-refresh value back to original value
+'        objConnection.OLEDBConnection.BackgroundQuery = bBackground
+'    Next
+'Application.Wait Now + #12:00:10 AM#
+'For Each Sheet In wb.Worksheets
+'    For Each Pivot In Sheet.PivotTables
+'        Pivot.RefreshTable
+'        Pivot.Update
+'    Next
+'Next
+'wb.Sheets("RAW").Visible = False
+'wb.Sheets("B_Panel").Visible = False
+
+'###################################    ZOS
+'Set EmpZOS = emp.ListObjects("EmpZOS")
+Set EmpZOS = emp.ListObjects("EmpZOS17")
+empZOStblrng = EmpZOS.Range.Address(False, False)
+pplsupplyZOS = EmpZOS.DataBodyRange.Rows.Count
+Set progZos = bpan.ListObjects("ZOS")
+progZosrng = progZos.Range.Address(False, False)
+Set progZosideal = bpan.ListObjects("ZOS_ideal")
+progZosrngideal = progZosideal.Range.Address(False, False)
+
+'###################################    ZIUWA
+'Set EmpZIU = emp.ListObjects("EmpZIU")
+Set EmpZIU = emp.ListObjects("EmpZIU18")
+empZIUtblrng = EmpZIU.Range.Address(False, False)
+pplsupplyZIU = EmpZIU.DataBodyRange.Rows.Count
+Set progZiu = bpan.ListObjects("ZiUWA")
+progZiurng = progZiu.Range.Address(False, False)
+Set progZiuideal = bpan.ListObjects("ZiUWA_ideal")
+progZiurngideal = progZiuideal.Range.Address(False, False)
+
+
+Set progideal = fpan.ListObjects("progideal")
+progtblrngideal = progideal.Range.Address(False, False)
+Set prog = fpan.ListObjects("prog")
+progtblrng = prog.Range.Address(False, False)
+pplSupply = pplsupplyZOS + pplsupplyZIU
+
+
+'ustalenie kolejnosci pobierania pracownikow nie mam aktualnie innego pomyslu trzeba zmienic
+'wjebac w loop sortowac po konkretnym numerze dnia
+emp.ListObjects("EmpZOS17").Sort.SortFields.Clear
+
+emp.ListObjects("EmpZOS17").Sort.SortFields. _
+    Add Key:=Range("EmpZOS17[zespol]"), SortOn:=xlSortOnValues, Order:= _
+    xlDescending, DataOption:=xlSortNormal
+emp.ListObjects("EmpZOS17").Sort.SortFields. _
+    Add Key:=Range("EmpZOS17[umowa]"), SortOn:=xlSortOnValues, Order:= _
+    xlAscending, DataOption:=xlSortNormal
+emp.ListObjects("EmpZOS17").Sort.SortFields. _
+    Add Key:=Range("EmpZOS17[work start]"), SortOn:=xlSortOnValues, Order:= _
+    xlAscending, DataOption:=xlSortNormal
+emp.ListObjects("EmpZOS17").Sort.SortFields. _
+    Add Key:=Range("EmpZOS17[LocalName]"), SortOn:=xlSortOnValues, Order:= _
+    xlAscending, DataOption:=xlSortNormal
+
+'With emp.ListObjects("EmpZOS17").Sort
+'    .Header = xlYes
+'    .MatchCase = False
+'    .Orientation = xlTopToBottom
+'    .SortMethod = xlPinYin
+'    .Apply
+'End With
+    
+    
+'########################stale###########################
+wysokosc = 8
+szerokosc = 15
+empCol = 5
+Vsum = 10
+wysokosc2 = wysokosc + pplsupplyZOS + 1 + 5
+Set ws = Sheets.Add(after:=Sheets(Sheets.Count))
+'########################stale###########################
+
+For I = 1 To empCol
+    arrayone = Choose(I, "Konsultant", "Login", "Umowa", "Zespół", "Specjalizacja")
+    ws.Cells(wysokosc, I) = arrayone
+    ws.Cells(wysokosc2, I) = arrayone
+    EmpZOS.ListColumns(I).DataBodyRange.Copy Destination:=ws.Cells(wysokosc + 1, I)
+    EmpZIU.ListColumns(I).DataBodyRange.Copy Destination:=ws.Cells(wysokosc2 + 1, I)
+Next I
+
+'ws.Rows(wysokosc + 1 & ":" & pplSupplyZos + wysokosc).Group
+'ws.Rows(wysokosc2 + 1 & ":" & wysokosc2 + pplSupplyZIU).Group
+ws.Cells(wysokosc - 2, 1) = "Grafik"
+ws.Cells(wysokosc - 1, 1) = "Prognoza"
+ws.Cells(wysokosc - 7, 1) = "SUMA 1 + SZ + S + U"
+ws.Cells(wysokosc - 6, 1) = "ZOS Suma"
+ws.Cells(wysokosc - 5, 1) = "ZiUWA Suma"
+
+ActiveWindow.Zoom = 70
+
+Z = 6
+For I = 1 To Vsum
+    arrayone = Choose(I, "Suma godzin dodatkowych", "Suma 1", "Suma S", "Suma SZ", _
+                "Suma UŻ", "Suma ZW", "Suma W", "Suma O", "Suma U", "Razem")
+    ws.Cells(wysokosc, Z) = arrayone
+    ws.Cells(wysokosc2, Z) = arrayone
+    Z = Z + 1
+'    ff = ff - 1
+Next I
+ws.Columns(2).Resize(, szerokosc - 2).Group
+
+'################################### Stworzenie kalendarza ####################################
+f = 1
+For I = 1 To dlast
+    ddDate = DateSerial(Year(Date), Month(Date) + 1, I)
+    If Weekday(ddDate, 2) < 6 Then
+        With ws.Cells(wysokosc, szerokosc + f)
+            .Value = ddDate
+            .NumberFormat = "dd ddd"
+        End With
+        With ws.Cells(wysokosc2, szerokosc + f)
+            .Value = ddDate
+            .NumberFormat = "dd ddd"
+        End With
+        
+        f = f + 1
+    Else
+    End If
+Next I
+
+last = ws.Cells(wysokosc, szerokosc).CurrentRegion.Columns.Count
+pracujace = last - szerokosc 'liczba dni pracujacych
+sumloop = pracujace
+
+
+
+
+Do While last > szerokosc
+    wkday = Weekday(ws.Cells(wysokosc, last), 2)
+    ddDate = ws.Cells(wysokosc, last)
+'    MsgBox wkDay
+
+'wylistowanie interwałów grafiku
+    For f = 1 To 20
+        h = 21 - f
+        ws.Columns(last).Insert shift:=xlToLeft
+        With ws.Cells(wysokosc, last)
+            .Value = progZos.DataBodyRange(h, 1)
+            .NumberFormat = 0
+            .Orientation = 90
+        End With
+        
+        With ws.Cells(wysokosc2, last)
+            .Value = progZos.DataBodyRange(h, 1)
+            .NumberFormat = 0
+            .Orientation = 90
+        End With
+
+
+'################################### sumaryczne zapotrzebowanie na ludzi
+        ppldemand = Application.VLookup(ws.Cells(wysokosc, last), fpan.Range(progtblrng), Weekday(ddDate, 2) + 1, False)
+        ppldemandideal = Application.VLookup(ws.Cells(wysokosc, last), fpan.Range(progtblrngideal), Weekday(ddDate, 2) + 1, False)
+        ppldemandzos = Application.VLookup(ws.Cells(wysokosc, last), bpan.Range(progZosrng), Weekday(ddDate, 2) + 1, False)
+        ppldemandziu = Application.VLookup(ws.Cells(wysokosc, last), bpan.Range(progZiurng), Weekday(ddDate, 2) + 1, False)
+
+        ppldemandzosideal = Application.VLookup(ws.Cells(wysokosc, last), bpan.Range(progZosrngideal), Weekday(ddDate, 2) + 1, False)
+        ppldemandZiuideal = Application.VLookup(ws.Cells(wysokosc, last), bpan.Range(progZiurngideal), Weekday(ddDate, 2) + 1, False)
+'###############################################################################################
+'rzad_1
+
+'zagrafikowana sumaryczna liczba ZOS
+        With ws.Cells(2, last)
+             .FormulaR1C1 = "=SUM(R[" & wysokosc - 1 & "]C:R[" & pplsupplyZOS + 6 & "]C)"
+
+        End With
+'zagrafikowana sumaryczna liczba ZIU gora
+        With ws.Cells(3, last)
+             .FormulaR1C1 = "=SUM(R[" & wysokosc2 - 2 & _
+                "]C:R[" & wysokosc2 + pplsupplyZIU - 3 & "]C)"
+             .NumberFormat = 0
+        End With
+                
+        With ws.Cells(wysokosc2 - 2, last)
+            .FormulaR1C1 = "=SUM(R[3]C:R[" & 2 + pplsupplyZIU & "]C)"
+        End With
+            
+   '     "=SUM(R[33]C:R[43]C)"
+''        With ws.Cells(poziom - 5, last)
+''            .FormulaR1C1 = "=SUM(R[3]C:R[27]C)"
+''        End With
+        
+''        MsgBox ppldemand
+        With ws.Cells(wysokosc - 1, last)
+            .Value = ppldemandzosideal
+'            .Value = ppldemand
+        End With '?###############################################################################
+        
+        With ws.Cells(wysokosc2 - 1, last)
+            .Value = ppldemandZiuideal
+        End With
+        
+        With ws.Cells(wysokosc - 2, last)
+            .FormulaR1C1 = "=SUM(R[3]C:R[" & pplsupplyZOS + 2 & "]C)"
+        End With
+        
+    Next f
+    ws.Columns(last).Resize(, 20).Group
+    ws.Columns(last).Resize(, 20).ColumnWidth = 3.5
+    last = last - 1
+Loop
+
+
+'################################### podliczenie dzienne godzin przepracowanych poziom pion
+For I = 1 To 2
+    zespol = Choose(I, "ZOS", "ZIU")
+    'ZOS
+    If zespol = "ZOS" Then
+        res = pplsupplyZOS + 1
+        wys = wysokosc
+    Else
+    'ZIU
+        res = pplsupplyZIU + 1
+        wys = wysokosc2
+    End If
+    
+    Accent = Choose(I, xlThemeColorAccent6, xlThemeColorAccent5)
+    
+    With ws.Cells(wys + res, 1).Resize(1, szerokosc + pracujace * 21)
+        .Font.Size = 14
+        .Interior.ThemeColor = Accent
+        .Interior.TintAndShade = 0.799981688894314
+        .Font.Bold = True
+        .HorizontalAlignment = xlCenter
+        .Borders(xlEdgeLeft).LineStyle = xlContinuous
+        .Borders(xlEdgeLeft).Weight = xlMedium
+        .Borders(xlEdgeTop).LineStyle = xlContinuous
+        .Borders(xlEdgeTop).Weight = xlMedium
+        .Borders(xlEdgeRight).LineStyle = xlContinuous
+        .Borders(xlEdgeRight).Weight = xlMedium
+        .Borders(xlEdgeBottom).LineStyle = xlContinuous
+        .Borders(xlEdgeBottom).Weight = xlMedium
+        .Borders(xlInsideVertical).Weight = xlThin
+        .Borders(xlInsideHorizontal).Weight = xlThin
+    End With
+    
+    With ws.Cells(wys, 1).Resize(1, szerokosc + pracujace * 21)
+        .Interior.ThemeColor = Accent
+        .Interior.TintAndShade = 0.799981688894314
+        .HorizontalAlignment = xlCenter
+        .Borders(xlEdgeLeft).LineStyle = xlContinuous
+        .Borders(xlEdgeLeft).Weight = xlMedium
+        .Borders(xlEdgeTop).LineStyle = xlContinuous
+        .Borders(xlEdgeTop).Weight = xlMedium
+        .Borders(xlEdgeRight).LineStyle = xlContinuous
+        .Borders(xlEdgeRight).Weight = xlMedium
+        .Borders(xlEdgeBottom).LineStyle = xlContinuous
+        .Borders(xlEdgeBottom).Weight = xlMedium
+        .Borders(xlInsideVertical).Weight = xlThin
+        .Borders(xlInsideHorizontal).Weight = xlThin
+    End With
+    
+    With ws.Cells(wys - 3, 1).Resize(1, szerokosc + pracujace * 21)
+        .Interior.ThemeColor = xlThemeColorDark1
+        .Interior.TintAndShade = 0
+     End With
+    
+'############### dzienne podsumowanie osob
+    hh = 21
+    For ii = 1 To pracujace
+        With ws.Cells(wys + 1, szerokosc + hh).Resize(res, 1)
+            .Font.Size = 14
+            .Interior.Color = 10498160
+            .Font.ThemeColor = xlThemeColorDark1
+            .Font.TintAndShade = 0
+            .Font.Bold = True
+            .HorizontalAlignment = xlCenter
+            .Borders(xlEdgeLeft).LineStyle = xlContinuous
+            .Borders(xlEdgeLeft).Weight = xlMedium
+            .Borders(xlEdgeTop).LineStyle = xlContinuous
+            .Borders(xlEdgeTop).Weight = xlMedium
+            .Borders(xlEdgeRight).LineStyle = xlContinuous
+            .Borders(xlEdgeRight).Weight = xlMedium
+            .Borders(xlEdgeBottom).LineStyle = xlContinuous
+            .Borders(xlEdgeBottom).Weight = xlMedium
+            .Borders(xlInsideVertical).Weight = xlThin
+            .Borders(xlInsideHorizontal).Weight = xlThin
+            .FormulaR1C1 = "=COUNTIF(RC[-20]:RC[-1],1)/2+COUNTIF(RC[-20]:RC[-1]," _
+             & dblqt & "s" & dblqt & ")/2+COUNTIF(RC[-20]:RC[-1]," _
+             & dblqt & "sz" & dblqt & ")/2+COUNTIF(RC[-20]:RC[-1]," _
+             & dblqt & "u" & dblqt & ")/2"
+'            .AutoFill Destination:=Range(ws.Cells(wysokosc + 1, szerokosc + hh), ws.Cells(pplSupply, szerokosc + hh))
+        End With
+        
+    hh = hh + 21
+    Next ii
+    
+    With ws.Rows(wys)
+        .RowHeight = 65
+    End With
+        
+Next I
+ActiveWindow.Zoom = 60
+
+'################################### Grafikowanie ####################################
+
+'################################### po zapotrzebowaniach na 2 turach ideal
+St = szerokosc + 1
+h = szerokosc + 21
+For ww = 1 To pracujace ' przejechac po dniach WSTAWIC DNI ROBOCZE
+hh = 20
+dday = ws.Cells(wysokosc, h)
+dayno = Day(dday)
+
+    wkday = Weekday(ws.Cells(wysokosc, h), 2) ' kolumna
+    '
+        For I = 1 To 2
+    zespol = Choose(I, "ZOS", "ZIU")
+        'ZOS
+        If zespol = "ZOS" Then
+            demandmorning = Application.Index(fpan.Range("m72:Q72"), wkday)
+            demandevening = Application.Index(fpan.Range("m73:Q73"), wkday)
+            pplSupply = pplsupplyZOS
+            pplSupplyw = pplsupplyZOS
+            maxppl = demandmorning + demandevening
+            empA = EmpZOS.DataBodyRange(empNo, 1)
+            Rng = emp.Range(empZOStblrng)
+            wys = wysokosc
+        Else
+        'ZIU
+            demandmorning = Application.Index(fpan.Range("u72:y72"), wkday)
+            demandevening = Application.Index(fpan.Range("u73:y73"), wkday)
+            pplSupply = pplsupplyZIU
+            pplSupplyw = pplsupplyZIU
+            maxppl = demandmorning + demandevening
+            empA = EmpZIU.DataBodyRange(empNo, 1)
+            Rng = emp.Range(empZIUtblrng)
+            wys = wysokosc2
+        End If
+    
+        empNo = 1
+        
+        
+'########################godziny pracy do zapotrzebowania na ludzi######################################
+        Do While maxppl > 0
+        
+            If empNo = pplSupply + 1 Then
+                maxppl = 0
+            Else
+                If zespol = "ZOS" Then
+                    empA = EmpZOS.DataBodyRange(empNo, 1)
+                Else
+                    empA = EmpZIU.DataBodyRange(empNo, 1)
+                End If
+                
+                If Left(empA, 5) <> "Agent" Then
+                dOff = Application.VLookup(empA, Rng, dayno + 7, False)
+                'teoretycznie jest posortowne po godzinie
+                    If dOff = "08:00" Then
+                        With ws.Cells(wys + empNo, St + 0).Resize(1, 16)
+                            .Value = 1
+                        End With
+                        empNo = empNo + 1
+                        demandmorning = demandmorning - 1
+                        maxppl = demandmorning + demandevening
+                        
+                    ElseIf dOff = "08:00 10H" Then
+                        With ws.Cells(wys + empNo, St + 0).Resize(1, 20)
+                            .Value = 1
+                        End With
+                        empNo = empNo + 1
+                        demandmorning = demandmorning - 1
+                        maxppl = demandmorning + demandevening
+                        
+                    ElseIf dOff = "09:00" Then
+                        With ws.Cells(wys + empNo, St + 2).Resize(1, 16)
+                            .Value = 1
+                        End With
+                        empNo = empNo + 1
+                        demandmorning = demandmorning - 1
+                        maxppl = demandmorning + demandevening
+                        
+                    ElseIf dOff = "09:00 9H" Then
+                        With ws.Cells(wys + empNo, St + 2).Resize(1, 18)
+                            .Value = 1
+                        End With
+                        empNo = empNo + 1
+                        demandmorning = demandmorning - 1
+                        maxppl = demandmorning + demandevening
+                        
+                    ElseIf dOff = "10:00" Then
+                        With ws.Cells(wys + empNo, St + 4).Resize(1, 16)
+                            .Value = 1
+                        End With
+                        empNo = empNo + 1
+                        demandmorning = demandevening - 1
+                        maxppl = demandmorning + demandevening
+                        
+                    ElseIf dOff = "11:00" Then
+                        With ws.Cells(wys + empNo, St + 6).Resize(1, 14)
+                            .Value = 1
+                        End With
+                        empNo = empNo + 1
+                        demandmorning = demandevening - 1
+                        maxppl = demandmorning + demandevening
+                        
+
+                        
+                    Else
+                        empNo = empNo + 1
+                        maxppl = demandmorning + demandevening
+                    End If
+                Else
+                    empNo = empNo + 1
+                    maxppl = demandmorning + demandevening
+                End If
+             End If
+        Loop
+        
+'########################urlopy po wszytskich pracownikach######################################
+        empNo = 1
+         
+        Do While pplSupplyw > 0
+        
+            If empNo = pplSupplyw + 1 Then
+                pplSupplyw = 0
+            Else
+                If zespol = "ZOS" Then
+                    empA = EmpZOS.DataBodyRange(empNo, 1)
+                Else
+                    empA = EmpZIU.DataBodyRange(empNo, 1)
+                End If
+                
+                If Left(empA, 5) <> "Agent" Then
+                dOff = Application.VLookup(empA, Rng, dayno + 7, False)
+                'teoretycznie jest posortowne po godzinie
+                    
+                    If dOff = "w" Then
+                        With ws.Cells(wys + empNo, St).Resize(1, 16)
+                            .Value = "w"
+                        End With
+                        empNo = empNo + 1
+                    ElseIf dOff = "u" Then
+                        With ws.Cells(wys + empNo, St).Resize(1, 16)
+                          .Value = "u"
+                        End With
+                        empNo = empNo + 1
+                    Else
+                        empNo = empNo + 1
+                    End If
+                Else
+                    empNo = empNo + 1
+                End If
+             End If
+        Loop
+        
+    Next I
+           
+    St = St + 21
+    h = h + 21
+Next ww
+'############### pierwszy wiersz podliczenie
+With ws.Cells(1, szerokosc + 1).Resize(1, sumloop * 20 + sumloop)
+    .FormulaR1C1 = "=R[" & wysokosc + pplsupplyZOS & "]C+R[" & wysokosc2 + pplsupplyZIU & "]C"
+    .HorizontalAlignment = xlCenter
+    .VerticalAlignment = xlCenter
+    .Interior.Pattern = xlSolid
+    .Interior.PatternColorIndex = xlAutomatic
+    .Interior.Color = 10498160
+    .Interior.TintAndShade = 0
+    .Interior.PatternTintAndShade = 0
+    .Font.ThemeColor = xlThemeColorDark1
+    .Font.TintAndShade = -4.99893185216834E-02
+    .Font.Bold = True
+    .Font.Size = 14
+End With
+
+
+'############################### kolorki wykresiki ########################################
+Rows("4").RowHeight = 4
+Rows(wysokosc + pplsupplyZOS + 2).RowHeight = 4
+Rows("5").RowHeight = 160
+Rows(wysokosc + pplsupplyZOS + 3).RowHeight = 160
+'Rows("4:7").Group
+Rows(4 & ":" & wysokosc + pplsupplyZOS).Group
+Rows(wysokosc2 - 3 & ":" & wysokosc2 + pplsupplyZIU).Group
+I = 3
+j = szerokosc + 1
+f = szerokosc + 21
+od_lewa = 725
+
+    For O = 1 To pracujace 'max dni pracujace
+ 
+        For I = 1 To 2
+        zespol = Choose(I, "ZOS", "ZIU")
+            'ZOS
+            If zespol = "ZOS" Then
+                tablminmax = progZosideal.DataBodyRange
+                Top = 50
+                chartsrc = 6
+                wysA = wysokosc + pplsupplyZOS + 1
+                pplsup = pplsupplyZOS
+                wysB = wysokosc
+                wysC = chartsrc - 2
+'                pierngA = ws.Range(ws.Cells(wysB, empCol + 1), ws.Cells(wysB, szerokosc))
+''                'działa ws.Cells(wysB, empCol).Resize(1, Vsum).Select
+'                pierngB = ws.Range(ws.Cells(wysB + pplsup, empCol + 1), ws.Cells(wysB + pplsup, szerokosc))
+'                pierng = Union(pierngA, pierngB)
+                
+
+'                MsgBox (test)
+                'pierng = ws.Range("$F$" & wysB & ":$N$" & wysB & _
+'            ",$F$34:$N$" & wysB + pplsup + 1)
+            Else
+            'ZIU
+                tablminmax = progZiuideal.DataBodyRange
+                Top = 3 * 15 + 4 + 2 * 15 + 160 + 63.75 + 2 + 18.75 + 18.75 * pplsupplyZOS + 5 + 5
+                chartsrc = wysokosc2 - 2
+                wysA = wysokosc2 + 1
+                wysB = wysokosc2
+                wysC = chartsrc - 2
+                pplsup = pplsupplyZIU
+'                pierngA = ws.Range(ws.Cells(wysB, empCol + 1), ws.Cells(wysB, szerokosc))
+'                pierngB = ws.Range(ws.Cells(wysB + pplsup, empCol + 1), ws.Cells(wysB + pplsup, szerokosc))
+
+            End If
+            
+            M = Application.WorksheetFunction.Max(tablminmax)
+            n = Application.WorksheetFunction.Min(tablminmax)
+            
+        '############################### wykres pokrycia
+                With ActiveSheet.ChartObjects.Add _
+                        (Left:=od_lewa, Width:=440, Top:=Top, Height:=156) 'left zmienna
+                    .Chart.SetSourceData Source:=ws.Cells(chartsrc, j).Resize(2, 20)     'zmienna!!!
+                    '.Chart.Name = "02 pon" 'zmienna
+                    .Chart.ChartType = xlLineMarkers
+                    .Chart.HasTitle = False
+                    .Chart.SetElement (msoElementLegendTop)
+                    .Chart.HasAxis(xlCategory, xlPrimary) = False
+                    .Chart.Axes(xlValue).MaximumScale = pplsup 'zmienna
+                    .Chart.Axes(xlValue).MinimumScale = n - 2 'zmienna
+                    .Chart.FullSeriesCollection(1).Name = "Grafik"
+                    .Chart.FullSeriesCollection(2).Name = "Prognoza"
+                End With
+        
+        
+        '        p = pplSupplyZOS
+                r = j
+        
+                dday = ws.Cells(wysokosc, f)
+                dzienmies = Day(dday)
+       
+                f = f + 21
+        '############################### ramki
+                'ramka dzienna na 20 okresow
+                With ws.Cells(wysC, j).Resize(pplsup + 5, 20)
+                    .Borders(xlEdgeLeft).LineStyle = xlContinuous
+                    .Borders(xlEdgeLeft).Weight = xlMedium
+                    .Borders(xlEdgeTop).LineStyle = xlContinuous
+                    .Borders(xlEdgeTop).Weight = xlMedium
+                    .Borders(xlEdgeBottom).LineStyle = xlContinuous
+                    .Borders(xlEdgeBottom).Weight = xlMedium
+                    .Borders(xlEdgeRight).LineStyle = xlContinuous
+                    .Borders(xlEdgeRight).Weight = xlMedium
+                End With
+                'ramka dzienna pozioma na interwały
+                With ws.Cells(wysB, j).Resize(1, 21)
+                    .Borders(xlEdgeLeft).LineStyle = xlContinuous
+                    .Borders(xlEdgeLeft).Weight = xlMedium
+                    .Borders(xlEdgeTop).LineStyle = xlContinuous
+                    .Borders(xlEdgeTop).Weight = xlMedium
+                    .Borders(xlEdgeBottom).LineStyle = xlContinuous
+                    .Borders(xlEdgeBottom).Weight = xlMedium
+                    .Borders(xlEdgeRight).LineStyle = xlContinuous
+                    .Borders(xlEdgeRight).Weight = xlMedium
+                End With
+                'ramka dzienna na liczbe osob grafik i prognoza
+                With ws.Cells(chartsrc, j).Resize(1, 20)
+                    .Borders(xlEdgeLeft).LineStyle = xlContinuous
+                    .Borders(xlEdgeLeft).Weight = xlMedium
+                    .Borders(xlEdgeTop).LineStyle = xlContinuous
+                    .Borders(xlEdgeTop).Weight = xlMedium
+                    .Borders(xlEdgeBottom).LineStyle = xlContinuous
+                    .Borders(xlEdgeBottom).Weight = xlMedium
+                    .Borders(xlEdgeRight).LineStyle = xlContinuous
+                    .Borders(xlEdgeRight).Weight = xlMedium
+                    .Font.Bold = True
+                End With
+        
+                'niebieski kolor dnia jedna komorka
+                With ws.Cells(wysB, j + 20)
+                    .Borders(xlEdgeLeft).LineStyle = xlContinuous
+                    .Borders(xlEdgeLeft).Weight = xlMedium
+                    .Borders(xlEdgeTop).LineStyle = xlContinuous
+                    .Borders(xlEdgeTop).Weight = xlMedium
+                    .Borders(xlEdgeBottom).LineStyle = xlContinuous
+                    .Borders(xlEdgeBottom).Weight = xlMedium
+                    .Borders(xlEdgeRight).LineStyle = xlContinuous
+                    .Borders(xlEdgeRight).Weight = xlMedium
+                    .Font.Bold = True
+                    .Interior.Color = 15773696
+                    .Font.Size = 12
+                    .HorizontalAlignment = xlCenter
+                    .VerticalAlignment = xlCenter
+                    .WrapText = True
+                End With
+                'ramka dzienna dla całości dnia
+                ws.Cells(wysB + 1, j).Resize(pplsup, 20).Select
+                With Selection
+                    .Borders(xlInsideVertical).LineStyle = xlContinuous
+                    .Borders(xlInsideVertical).Weight = xlThin
+                    .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+                    .Borders(xlInsideHorizontal).Weight = xlThin
+                    .HorizontalAlignment = xlCenter
+                    .VerticalAlignment = xlCenter
+                End With
+        
+        '############################### formatowanie warunkowe
+                Selection.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=1"
+                Selection.FormatConditions(Selection.FormatConditions.Count).SetFirstPriority
+                With Selection.FormatConditions(1).Interior
+                    .PatternColorIndex = xlAutomatic
+                    .Color = 5287936
+                    .TintAndShade = 0
+                End With
+                Selection.FormatConditions(1).StopIfTrue = False
+                
+                Selection.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""o"""
+                Selection.FormatConditions(Selection.FormatConditions.Count).SetFirstPriority
+                With Selection.FormatConditions(1).Interior
+                    .PatternColorIndex = xlAutomatic
+                    .Color = 9990000
+                    .TintAndShade = 0
+                End With
+                Selection.FormatConditions(1).StopIfTrue = False
+                
+                Selection.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""s"""
+                Selection.FormatConditions(Selection.FormatConditions.Count).SetFirstPriority
+                With Selection.FormatConditions(1).Interior
+                    .PatternColorIndex = xlAutomatic
+                    .Color = 15773696
+                    .TintAndShade = 0
+                End With
+                Selection.FormatConditions(1).StopIfTrue = False
+                
+                Selection.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""sz"""
+                Selection.FormatConditions(Selection.FormatConditions.Count).SetFirstPriority
+                With Selection.FormatConditions(1).Interior
+                    .PatternColorIndex = xlAutomatic
+                    .ThemeColor = xlThemeColorDark1
+                    .TintAndShade = -0.499984740745262
+                End With
+                Selection.FormatConditions(1).StopIfTrue = False
+                
+                Selection.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""uż"""
+                Selection.FormatConditions(Selection.FormatConditions.Count).SetFirstPriority
+                With Selection.FormatConditions(1).Interior
+                    .PatternColorIndex = xlAutomatic
+                    .Color = 255
+                    .TintAndShade = 0
+                End With
+                Selection.FormatConditions(1).StopIfTrue = False
+                
+                Selection.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""w"""
+                Selection.FormatConditions(Selection.FormatConditions.Count).SetFirstPriority
+                With Selection.FormatConditions(1).Interior
+                    .PatternColorIndex = xlAutomatic
+                    .Color = 65535 'zolty
+                    .TintAndShade = 0
+                End With
+                Selection.FormatConditions(1).StopIfTrue = False
+                
+                Selection.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""zw"""
+                Selection.FormatConditions(Selection.FormatConditions.Count).SetFirstPriority
+                With Selection.FormatConditions(1).Interior
+                    .PatternColorIndex = xlAutomatic
+                    .Color = 49407 'pomarancz
+                    .TintAndShade = 0
+                    .PatternTintAndShade = 0
+                End With
+                Selection.FormatConditions(1).StopIfTrue = False
+                
+                Selection.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""u"""
+                Selection.FormatConditions(Selection.FormatConditions.Count).SetFirstPriority
+                With Selection.FormatConditions(1).Interior
+                    .PatternColorIndex = xlAutomatic
+                    .Color = 5296274 'jasna zielen
+                    .TintAndShade = 0
+                    .PatternTintAndShade = 0
+                End With
+                Selection.FormatConditions(1).StopIfTrue = False
+           
+           '################### dzienna suma jedynek do KPI pierwszy wiersz
+            With ws.Cells(1, szerokosc + j + 5)
+                .FormulaR1C1 = "=sum(RC[-20]:RC[-1])/2"
+                '.Font.Size = 16
+                .Font.ThemeColor = xlThemeColorLight1
+                '.Interior.Pattern = xlSolid
+                '.PatternColorIndex = xlAutomatic
+                .Interior.Color = 15773696
+            End With
+               
+        Next I
+        od_lewa = od_lewa + 498 'na mojej rozdzielczosci dziala idealnie
+        j = j + 21
+    Next O
+
+'##################################
+For I = 1 To 2
+zespol = Choose(I, "ZOS", "ZIU")
+    'ZOS
+    If zespol = "ZOS" Then
+        tablminmax = progZosideal.DataBodyRange
+        Top = 50 - 25
+        chartsrc = 6
+        wysA = wysokosc + pplsupplyZOS + 1
+        pplsup = pplsupplyZOS
+        wysB = wysokosc
+        wysC = chartsrc - 2
+        pierng = Union(ws.Range(ws.Cells(wysB, empCol + 1), ws.Cells(wysB, szerokosc)), _
+                ws.Range(ws.Cells(wysB + pplsup, empCol + 1), ws.Cells(wysB + pplsup + 1, szerokosc)))
+                
+    Else
+    'ZIU
+        tablminmax = progZiuideal.DataBodyRange
+        Top = 3 * 15 + 4 + 2 * 15 + 160 + 63.75 + 2 + 18.75 + 18.75 * pplsupplyZOS + 30 - 25
+        chartsrc = wysokosc2 - 2
+        wysA = wysokosc2 + 1
+        wysB = wysokosc2
+        wysC = chartsrc - 2
+        pplsup = pplsupplyZIU
+        pierng = Union(ws.Range(ws.Cells(wysB, empCol + 1), ws.Cells(wysB, szerokosc)), _
+                ws.Range(ws.Cells(wysB + pplsup, empCol + 1), ws.Cells(wysB + pplsup + 1, szerokosc)))
+    End If
+
+
+    Z = 6
+    ff = Vsum
+    For f = 1 To 9
+    
+    arrytwo = Choose(f, "d", 1, "s", "sz", "uż", "zw", "w", "o", "u")
+    kolor = Choose(f, "808080", "5287936", "15773696", "5000000", "255", "49407" _
+    , "65535", "9990000", "5296274")
+        With ws.Cells(wysB + 1, Z)
+            .HorizontalAlignment = xlCenter
+            .Borders(xlEdgeLeft).LineStyle = xlContinuous
+            .Borders(xlEdgeLeft).Weight = xlMedium
+            .Borders(xlEdgeTop).LineStyle = xlContinuous
+            .Borders(xlEdgeTop).Weight = xlMedium
+            .Borders(xlEdgeRight).LineStyle = xlContinuous
+            .Borders(xlEdgeRight).Weight = xlMedium
+            .Borders(xlEdgeBottom).LineStyle = xlContinuous
+            .Borders(xlEdgeBottom).Weight = xlMedium
+            .FormulaR1C1 = "=COUNTIF(RC[" & ff & "]:RC[555]," & dblqt & arrytwo & dblqt & ")/2"
+            .AutoFill Destination:=ws.Range(Cells(wysB + 1, Z), ws.Cells(pplsup + wysB, Z))
+        End With
+        
+        With ws.Cells(wysB + 1, Z).Resize(pplsup, 1)
+            .Interior.Color = kolor
+        End With
+        
+        Z = Z + 1
+        ff = ff - 1
+    Next f
+    'razem
+    With ws.Cells(wysB + 1, szerokosc).Resize(pplsup, 1)
+        .FormulaR1C1 = _
+        "=RC[-9]+RC[-8]+RC[-7]+RC[-6]+RC[-1]"
+        '"=SUM(RC[-9]:RC[-1])"
+    End With
+    
+
+    ws.Rows("2:3").EntireRow.Hidden = True
+    
+    
+    With ws.Cells(wysB, 1).Resize(1, szerokosc)
+        .Font.Bold = True
+        .Font.Name = "Calibri"
+        .Font.Size = 12
+        .Borders(xlEdgeLeft).LineStyle = xlContinuous
+        .Borders(xlEdgeLeft).Weight = xlMedium
+        .Borders(xlEdgeTop).LineStyle = xlContinuous
+        .Borders(xlEdgeTop).Weight = xlMedium
+        .Borders(xlEdgeRight).LineStyle = xlContinuous
+        .Borders(xlEdgeRight).Weight = xlMedium
+        .Borders(xlEdgeBottom).LineStyle = xlContinuous
+        .Borders(xlEdgeBottom).Weight = xlMedium
+    End With
+    
+    With ws.Cells(wysB + 1, 1).Resize(pplsup, 5)
+        '.Font.Bold = True
+        .Font.Name = "Calibri"
+        .Font.Size = 12
+        .Borders(xlEdgeLeft).LineStyle = xlContinuous
+        .Borders(xlEdgeLeft).Weight = xlMedium
+        .Borders(xlEdgeTop).LineStyle = xlContinuous
+        .Borders(xlEdgeTop).Weight = xlMedium
+        .Borders(xlEdgeRight).LineStyle = xlContinuous
+        .Borders(xlEdgeRight).Weight = xlMedium
+        .Borders(xlEdgeBottom).LineStyle = xlContinuous
+        .Borders(xlEdgeBottom).Weight = xlMedium
+    End With
+'###############################################
+    With ws.Cells(1, 6).Resize(pplsup + wysokosc, 10)
+        .Font.Bold = True
+        .Font.Name = "Calibri"
+        .Font.Size = 12
+        .Borders(xlEdgeLeft).LineStyle = xlContinuous
+        .Borders(xlEdgeLeft).Weight = xlMedium
+        .Borders(xlEdgeTop).LineStyle = xlContinuous
+        .Borders(xlEdgeTop).Weight = xlMedium
+        .Borders(xlEdgeRight).LineStyle = xlContinuous
+        .Borders(xlEdgeRight).Weight = xlMedium
+        .Borders(xlEdgeBottom).LineStyle = xlContinuous
+        .Borders(xlEdgeBottom).Weight = xlMedium
+    End With
+    
+'#################################### PODSUMOWANIE PIONÓW DLA DANEGO DZIAŁU
+    With ws.Cells(wysB + pplsup + 1, empCol + 1).Resize(1, szerokosc - empCol + pracujace * 21)
+        .FormulaR1C1 = "=SUM(R[-" & pplsup & "]C:R[-1]C)"
+        .HorizontalAlignment = xlCenter
+        .Borders(xlEdgeLeft).LineStyle = xlContinuous
+        .Borders(xlEdgeLeft).Weight = xlMedium
+        .Borders(xlEdgeTop).LineStyle = xlContinuous
+        .Borders(xlEdgeTop).Weight = xlMedium
+        .Borders(xlEdgeRight).LineStyle = xlContinuous
+        .Borders(xlEdgeRight).Weight = xlMedium
+        .Borders(xlEdgeBottom).LineStyle = xlContinuous
+        .Borders(xlEdgeBottom).Weight = xlMedium
+        .Borders(xlInsideVertical).Weight = xlThin
+        .Borders(xlInsideHorizontal).Weight = xlThin
+        .Font.Bold = True
+        .Font.Name = "Calibri"
+        .Font.Size = 12
+    End With
+'    pierng.Select
+
+'wykres sumaryczny
+    With ActiveSheet.ChartObjects.Add _
+    (Left:=245, Width:=422, Top:=Top, Height:=156)
+    .Chart.SetSourceData Source:=Union(ws.Range(ws.Cells(wysB, empCol + 1), ws.Cells(wysB, szerokosc - 1)), _
+                ws.Range(ws.Cells(wysB + pplsup + 1, empCol + 1), ws.Cells(wysB + pplsup + 1, szerokosc - 1)))
+    .Chart.ChartType = xlPie
+    .Chart.HasTitle = False
+    .Chart.ApplyDataLabels LegendKey:=True
+    End With
+
+Next I
+
+''################### PODSUMOWANIE PIONÓW DLA DANEGO DZIAŁU TYLKO JEDYNKI
+'For I = 1 To pracujace
+'    With ws.Cells(wysokosc + pplsupplyZOS + 1, szerokosc + (20 + 1) * I)
+'        .FormulaR1C1 = "=SUM(RC[-20]:RC[-1])/2"
+'    End With
+'
+'    With ws.Cells(wysokosc2 + pplsupplyZIU + 1, szerokosc + (20 + 1) * I)
+'        .FormulaR1C1 = "=SUM(RC[-20]:RC[-1])/2"
+'    End With
+'Next I
+
+
+
+
+'ws.Cells(wysokosc + pplSupplyZOS + 1, empCol + 1).Resize(1, Vsum).Select
+'ws.Range(ws.Cells(wysokosc, empCol + 1).Resize(1, Vsum) _
+'    , ws.Cells(wysokosc + pplSupplyZOS + 1, empCol + 1).Resize(1, Vsum)).Select
+'ws.Range(Range(ws.Cells(wysokosc, empCol + 1), ws.Cells(wysokosc, szerokosc)) _
+'    , Range(ws.Cells(wysokosc + pplSupplyZOS + 1, empCol + 1), _
+'        ws.Cells(wysokosc + pplSupplyZOS + 1, szerokosc))).Select
+        
+'With ActiveSheet.ChartObjects.Add _
+'    (Left:=245, Width:=422, Top:=50, Height:=156)
+'    .Chart.SetSourceData Source:= _
+'        ws.Range("$F$" & wysokosc & ":$N$" & wysokosc & _
+'            ",$F$34:$N$" & wysokosc + pplSupplyZOS + 1)
+''    .Chart.ChartType = xlBarStacked
+'    .Chart.ChartType = xlPie
+'    .Chart.HasTitle = False
+''    .Chart.ApplyDataLabels LegendKey:=True
+'End With
+'
+'With ActiveSheet.ChartObjects.Add _
+'    (Left:=245, Width:=422, Top:= _
+'    3 * 15 + 4 + 2 * 15 + 160 + 63.75 + 15 + 2 + 18.75 + 18.75 * pplSupplyZOS + 5, _
+'    Height:=156)
+'    .Chart.SetSourceData Source:= _
+'        ws.Range("$F$" & wysokosc2 & ":$N$" & wysokosc2 & _
+'            ",$F$34:$N$" & wysokosc2 + pplSupplyZIU + 1)
+''    .Chart.ChartType = xlBarStacked
+'    .Chart.ChartType = xlPie
+'    .Chart.HasTitle = False
+''    .Chart.ApplyDataLabels LegendKey:=True
+'End With
+
+
+''obciecie arkusza
+'    Columns("SN:SN").Select
+'    Range(Selection, Selection.End(xlToRight)).Select
+'    Selection.EntireColumn.Hidden = True
+    ws.Cells(wysokosc, 1) = "ZOS"
+    ws.Cells(wysokosc2, 1) = "ZiUWA"
+    ws.Range("A1").Select
+    ws.Columns("A:E").EntireColumn.AutoFit
+    ws.Columns("A:A").ColumnWidth = 20
+    ws.Name = MonthName(Month(Date) + 1) & " " & Year(Date)
+'    ws.Cells(wysokosc + 1, szerokosc + 1).Activate
+    ws.Cells(1, szerokosc + 1).Activate
+    ActiveWindow.FreezePanes = True
+    ws.Activate
+    ActiveWindow.Zoom = 70
+    wb.Sheets("Sterowanie").Activate
+    ActiveWindow.Zoom = 80
+  
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
+    MsgBox ("Wykonano - " & Format(Timer - Starttime, "00:00") & " s.")
+    
+End Sub
