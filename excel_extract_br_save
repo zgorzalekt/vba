@@ -1,7 +1,7 @@
 Private Sub Workbook_BeforeSave(ByVal SaveAsUI As Boolean, _
         Cancel As Boolean)
 'Path = Application.ThisWorkbook.Path
-'    Path = "\\10.0.1.59\departaments\BOOK\BOOK_wymiana\Call Center\GRAFIK_SYSTEM_RÓWNOWAŻNY\"
+'    Path = "XXX"
     Dim dblqt As String
     dblqt = Chr(34)
     Dim d As Integer
