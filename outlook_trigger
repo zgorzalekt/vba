@@ -12,21 +12,21 @@ On Error GoTo ErrorHandler
 
 Dim xlApp As Object
 Set xlApp = CreateObject("Excel.application")
-Path = "K:\Zespol_Optymalizacji_Procesow\Ratajczyk Rafał\Zapytania_do_raportów\Dzienne\Raport ZAS\"
+Path = "XXX"
     If TypeName(obj) = "MailItem" Then
         If obj.Subject = "ZAS_DETAL_V1" Then
             attmax = obj.Attachments.Count
             If attmax > 0 Then
                 For i = 1 To attmax
                     If obj.Attachments.Item(i).FileName = "ZAS_DETAL_V1.xlsx" Then
-                        obj.Attachments.Item(i).SaveAsFile "K:\Zespol_Optymalizacji_Procesow\" _
-                            & "Ratajczyk Rafał\Zapytania_do_raportów\Dzienne\Raport ZAS\" _
+                        obj.Attachments.Item(i).SaveAsFile "XXX\" _
+                            & "XXX" _
                             & obj.Attachments.Item(i).FileName
-                        Set wb = xlApp.workbooks.Open("C:\Users\tzgorzalek\Desktop\" _
-                            & "Raport_ZAS_makro.xlsm")
-                        xlApp.Application.Run ("Raport_ZAS_makro.xlsm!raport_zas")
+                        Set wb = xlApp.workbooks.Open("XXX" _
+                            & "XXX.xlsm")
+                        xlApp.Application.Run ("XXX.xlsm!raport_zas")
 '                        Application.Wait (Now + TimeValue("0:00:03"))
-                        xlApp.Application.Run ("Raport_ZAS_makro.xlsm!wyslij_email")
+                        xlApp.Application.Run ("XXX.xlsm!wyslij_email")
                         wb.Close True
                         Set wb = Nothing
                         xlApp.Quit
@@ -36,18 +36,18 @@ Path = "K:\Zespol_Optymalizacji_Procesow\Ratajczyk Rafał\Zapytania_do_raportów
                 Next i
             Else
             End If
-        ElseIf obj.Subject = "dzienny wsad do makra Polisa Anulowana AE+BPM" Then
+        ElseIf obj.Subject = "dzienny wsad do makra XXX" Then
             attmax = obj.Attachments.Count
             If attmax > 0 Then
                 For i = 1 To attmax
-                    If obj.Attachments.Item(i).FileName = "Dokumenty anulowanie SprawyIN(AE+BPM).xlsx" Then
-                        obj.Attachments.Item(i).SaveAsFile "K:\Zespol_Optymalizacji_Procesow\" _
-                            & "Ratajczyk Rafał\Zapytania_do_raportów\Dzienne\AEanulowanieBPMsprIN\" _
+                    If obj.Attachments.Item(i).FileName = "XXX.xlsx" Then
+                        obj.Attachments.Item(i).SaveAsFile "XXX" _
+                            & "XXX" _
                             & obj.Attachments.Item(i).FileName
-                        Set wb = xlApp.workbooks.Open("C:\Users\tzgorzalek\Desktop\" _
-                            & "Polisa Anulowana makro.xlsm")
-                        xlApp.Application.Run ("Polisa Anulowana makro.xlsm!raport_aebpm")
-                        xlApp.Application.Run ("Polisa Anulowana makro.xlsm!wyslij_email")
+                        Set wb = xlApp.workbooks.Open("XXX" _
+                            & "XXX.xlsm")
+                        xlApp.Application.Run ("XXX.xlsm!raport_aebpm")
+                        xlApp.Application.Run ("XXX.xlsm!wyslij_email")
                         wb.Close True
                         Set wb = Nothing
                         xlApp.Quit
